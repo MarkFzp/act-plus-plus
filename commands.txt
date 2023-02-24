@@ -1,0 +1,1038 @@
+
+
+
+# ROS terminal
+ros-init
+roslaunch aloha 4arms_teleop.launch
+
+# Right hand terminal
+conda activate aloha
+cd-ps
+python3 one_side_teleop.py right
+
+# Left hand terminal
+conda activate aloha
+cd-ps
+python3 one_side_teleop.py left
+
+# Sleep terminal
+conda activate aloha
+cd-ps
+python3 sleep.py
+
+# To recompile
+ros-init
+catkin_make
+
+
+
+python3 record_episodes.py --dataset_dir /scr2/tonyzhao/datasets/test_new --episode_idx 0
+
+python3 visualize_episodes.py --dataset_dir /scr2/tonyzhao/datasets/test_new --episode_idx 0
+
+python3 replay_episodes.py --dataset_dir /scr2/tonyzhao/datasets/test_new --episode_idx 0
+
+python3 imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_25_battery \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_25_battery-seed-0 \
+--policy_class DETRVAE --kl_weight 80 --window_len 90 --hidden_dim 512 --batch_size 4 --dim_feedforward 3000 \
+--task_name battery --seed 0 --eval
+
+#####################################################################
+#####################################################################
+#####################################################################
+
+# record sim episodes
+
+python3 record_sim_episodes.py --task_name transfer_cube --dataset_dir /scr2/tonyzhao/datasets/test_transfer --num_episodes 50
+python3 record_sim_episodes.py --task_name insertion --dataset_dir /scr2/tonyzhao/datasets/test_insertion --num_episodes 50
+
+
+python3 visualize_episodes.py --dataset_dir /scr2/tonyzhao/datasets/test_transfer --episode_idx 0
+
+
+python3 imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /scr2/tonyzhao/train_logs/test_transfer \
+--policy_class ACT --kl_weight 10 --chunk_size 100 --hidden_dim 256 --batch_size 8 --dim_feedforward 2048 \
+--task_name transfer_cube --seed 0 \
+--num_epochs 1000  --lr 1e-4
+# GOOD
+
+python3 imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_9_sim_insertion \
+--ckpt_dir /scr2/tonyzhao/train_logs/test_insertion \
+--policy_class ACT --kl_weight 10 --chunk_size 100 --hidden_dim 256 --batch_size 8 --dim_feedforward 2048 \
+--task_name insertion --seed 0 \
+--num_epochs 1000  --lr 1e-4
+
+
+python3 imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_9_sim_insertion \
+--ckpt_dir /scr2/tonyzhao/train_logs/test_insertion2 \
+--policy_class ACT --kl_weight 10 --chunk_size 100 --hidden_dim 256 --batch_size 8 --dim_feedforward 2048 \
+--task_name insertion --seed 0 \
+--num_epochs 2000  --lr 1e-4
+
+
+python3 imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_9_sim_insertion \
+--ckpt_dir /scr2/tonyzhao/train_logs/test_insertion3 \
+--policy_class ACT --kl_weight 10 --chunk_size 100 --hidden_dim 256 --batch_size 8 --dim_feedforward 2048 \
+--task_name insertion --seed 0 \
+--num_epochs 2000  --lr 1e-5
+# 48%
+# 54% with TA
+
+
+python3 imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /scr2/tonyzhao/train_logs/test_transfer3 \
+--policy_class ACT --kl_weight 10 --chunk_size 100 --hidden_dim 256 --batch_size 8 --dim_feedforward 2048 \
+--task_name transfer_cube --seed 0 \
+--num_epochs 2000  --lr 1e-5
+
+
+
+# MLP
+
+python3 imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /scr2/tonyzhao/train_logs/test_transfer-mlp \
+--policy_class CNNMLP --kl_weight 10 --chunk_size 100 --hidden_dim 256 --batch_size 8 --dim_feedforward 2048 \
+--task_name transfer_cube --seed 0 \
+--num_epochs 1000  --lr 1e-4
+# GOOD
+
+
+
+#####################################################################
+#####################################################################
+#####################################################################
+
+
+# training bc
+conda activate fm
+cd-ps
+python3 examples/imitate_episodes.py --ckpt_dir /home/tonyzhao/train_logs/10_18_ovefit_GPT/ --eval --onscreen_render
+
+
+# sim and collision detection
+
+cd /home/tonyzhao/mujoco-2.2.1/bin
+./simulate /home/tonyzhao/interbotix_ws/src/interbotix_ros_manipulators/interbotix_ros_xsarms/interbotix_xsarm_descriptions/urdf/bimanual_viperx.xml
+
+
+# run experiments in cluster
+
+export MUJOCO_GL=osmesa
+cd /afs/cs.stanford.edu/u/tonyzhao/Research/interbotix-src/interbotix_ros_manipulators/interbotix_ros_xsarms/examples/teleoperation/python_scripts/examples
+python3 imitate_episodes.py --ckpt_dir=/iris/u/tonyzhao/train_logs/11_1_detr_cluster
+
+
+
+# WIP
+
+# fix usb port for robots
+udevadm info --name=/dev/ttyUSB0 --attribute-walk | grep serial
+
+SUBSYSTEM=="tty", ATTRS{serial}=="FT6S4DSP", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6014", ENV{ID_MM_DEVICE_IGNORE}="1", ATTR{device/latency_timer}="1", SYMLINK+="ttyDXL0"
+SUBSYSTEM=="tty", ATTRS{serial}=="FT6S4HW3", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6014", ENV{ID_MM_DEVICE_IGNORE}="1", ATTR{device/latency_timer}="1", SYMLINK+="ttyDXL1"
+SUBSYSTEM=="tty", ATTRS{serial}=="FT4NQ4YH", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6014", ENV{ID_MM_DEVICE_IGNORE}="1", ATTR{device/latency_timer}="1", SYMLINK+="ttyDXL2"
+SUBSYSTEM=="tty", ATTRS{serial}=="FT6S4DOU", ATTRS{idVendor}=="0403", ATTRS{idProduct}=="6014", ENV{ID_MM_DEVICE_IGNORE}="1", ATTR{device/latency_timer}="1", SYMLINK+="ttyDXL3"
+
+# fix usb port for cameras
+udevadm info --name=/dev/video0 --attribute-walk | grep serial
+
+SUBSYSTEM=="video4linux", ATTRS{serial}=="C58A5FAF", ATTR{index}=="0", ATTRS{idProduct}=="085c", ATTR{device/latency_timer}="1", SYMLINK+="CAM_RIGHT_WRIST"
+SUBSYSTEM=="video4linux", ATTRS{serial}=="7FDB4B6F", ATTR{index}=="0", ATTRS{idProduct}=="085c", ATTR{device/latency_timer}="1", SYMLINK+="CAM_HIGH"
+SUBSYSTEM=="video4linux", ATTRS{serial}=="0E1A2B2F", ATTR{index}=="0", ATTRS{idProduct}=="085c", ATTR{device/latency_timer}="1", SYMLINK+="CAM_LEFT_WRIST"
+SUBSYSTEM=="video4linux", ATTRS{serial}=="98ED30BF", ATTR{index}=="0", ATTRS{idProduct}=="085c", ATTR{device/latency_timer}="1", SYMLINK+="CAM_LOW"
+
+# add these commands and reload usb connections
+sudo vim /etc/udev/rules.d/99-fixed-interbotix-udev.rules
+sudo udevadm control --reload
+sudo udevadm trigger
+
+
+# Installation
+
+Install interbotix and ROS. Ubuntu 18.01 or 20.01
+https://www.trossenrobotics.com/docs/interbotix_xsarms/ros_interface/software_setup.html
+
+Install oculus reader
+https://github.com/rail-berkeley/oculus_reader
+After following the first few installations
+Clone the repo
+pip install -e
+
+Follow instruction, and use apt get to install ros-noetic-*
+
+
+# installing usb camera
+sudo apt-get install ros-noetic-usb-cam
+sudo apt-get install ros-noetic-cv-bridge
+
+
+conda activate fm
+pip install torchvision
+pip install torch
+pip install pyquaternion
+pip install pyyaml
+pip install rospkg
+pip install pexpect
+pip install mujoco
+pip install dm_control
+pip install opencv-python
+pip install matplotlib
+pip install einops
+pip install packaging
+pip install h5py
+
+### Experiments
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/12_10_velcro_thread_win_30_kl_5 --kl_weight 5 --window_len 30 --eval
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/12_10_velcro_thread_win_30_kl_10 --kl_weight 10 --window_len 30 --eval
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/12_10_velcro_thread_win_30_kl_20 --kl_weight 20 --window_len 30 --eval
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/12_10_velcro_thread_win_30_kl_40 --kl_weight 40 --window_len 30 --eval
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/12_10_velcro_thread_win_15_kl_10 --kl_weight 10 --window_len 15 --eval
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/12_11_velcro_thread_win_60_kl_10 --kl_weight 10 --window_len 60
+
+
+Dec 21
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/12_21_velcro_thread_win_60_kl_10 --kl_weight 10 --window_len 60 --eval
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/12_21_velcro_thread_win_30_kl_10 --kl_weight 10 --window_len 30 --eval
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/12_21_velcro_thread_win_60_kl_20 --kl_weight 20 --window_len 60 --eval
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/12_21_velcro_thread_win_30_kl_20 --kl_weight 20 --window_len 30 --eval
+
+Dec 22
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/12_22_velcro_thread_win_60_kl_10 --kl_weight 10 --window_len 60 --eval
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/12_22_velcro_thread_win_60_kl_20 --kl_weight 20 --window_len 60 --eval
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/12_22_velcro_thread_win_60_kl_40 --kl_weight 40 --window_len 60 --eval
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/12_22_velcro_thread_win_30_kl_10 --kl_weight 10 --window_len 30 --eval
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/12_22_velcro_thread_win_30_kl_40 --kl_weight 40 --window_len 30 --eval
+
+round 2
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/12_22_velcro_thread_win_60_kl_10 --kl_weight 5 --window_len 60
+
+# human data + detrvae
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/1_1_sim_box_human_detrvae_try1 --kl_weight 10 --window_len 60
+Success rate: 0.14
+Average return: 22.04
+
+
+try 512 hidden_dim
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/1_1_sim_box_human_detrvae_try1_expressive --kl_weight 10 --window_len 60
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/1_1_sim_box_human_detrvae_try1_expressive2 --kl_weight 10 --window_len 50
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/1_1_sim_box_human_detrvae_try2 --kl_weight 10 --window_len 400
+
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/1_1_sim_box_human_detrvae_try3_expressive --kl_weight 10 --window_len 200 --eval
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/1_1_sim_box_human_detrvae_try4_expressive --kl_weight 10 --window_len 100 --eval
+
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/1_1_sim_box_human_detrvae_try1_20kl --kl_weight 20 --window_len 60 # --hidden_dim 256 --batch_size 4
+# 0.32
+
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/1_1_sim_box_human_detrvae_sweep_try1 --kl_weight 20 --window_len 60 --hidden_dim 256 --batch_size 32
+Success rate: 0.02
+Average return: 2.32
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/1_1_sim_box_human_detrvae_sweep_try2 --kl_weight 30 --window_len 60 --hidden_dim 256 --batch_size 32
+Success rate: 0.02
+Average return: 2.22
+
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/1_1_sim_box_human_detrvae_sweep_try3 --kl_weight 20 --window_len 60 --hidden_dim 512 --batch_size 16
+Success rate: 0.18
+Average return: 22.8
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/1_1_sim_box_human_detrvae_sweep_try4 --kl_weight 30 --window_len 60 --hidden_dim 512 --batch_size 16
+Success rate: 0.38
+Average return: 33.16
+
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/1_1_sim_box_human_detrvae_sweep_try5 --kl_weight 30 --window_len 60 --hidden_dim 512 --batch_size 8
+Success rate: 0.04
+Average return: 4.1
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/1_1_sim_box_human_detrvae_sweep_try6 --kl_weight 40 --window_len 60 --hidden_dim 512 --batch_size 16
+Success rate: 0.26
+Average return: 33.18
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/1_1_sim_box_human_detrvae_sweep_try7 --kl_weight 30 --window_len 60 --hidden_dim 1024 --batch_size 8
+Success rate: 0.04
+Average return: 5.9
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/1_1_sim_box_human_detrvae_sweep_try8 --kl_weight 40 --window_len 60 --hidden_dim 1024 --batch_size 8
+Success rate: 0.02
+Average return: 0.42
+
+
+# new task insertion
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/1_10_sim_insertion_detrvae_sweep_try1 --kl_weight 10 --window_len 400 --hidden_dim 256 --batch_size 8
+Success rate: 0.0
+Average return: 0.0
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/1_10_sim_insertion_detrvae_sweep_try2 --kl_weight 10 --window_len 200 --hidden_dim 256 --batch_size 8
+Success rate: 0.15
+Average return: 1.95
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/1_10_sim_insertion_detrvae_sweep_try3 --kl_weight 10 --window_len 100 --hidden_dim 256 --batch_size 8
+Success rate: 0.4
+Average return: 16.7
+
+python3 examples/imitate_episodes.py --ckpt_dir /scr/tonyzhao/train_logs/1_10_sim_insertion_detrvae_sweep_try4 --kl_weight 10 --window_len 50 --hidden_dim 256 --batch_size 8
+Success rate: 0.2
+Average return: 9.8
+
+
+
+### Ours - experiments and time ensemble
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_30_sim_box_50_human \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_30_sim_box_50_human-TEST \
+--policy_class DETRVAE --kl_weight 30 --window_len 60 --hidden_dim 512 --batch_size 16 --dim_feedforward 2048 \
+--task_name transfer_cube --seed 0
+# 28
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_30_sim_box_50_human \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_30_sim_box_50_human-TEST-2 \
+--policy_class DETRVAE --kl_weight 30 --window_len 60 --hidden_dim 512 --batch_size 8 --dim_feedforward 4096 \
+--task_name transfer_cube --seed 0
+# 38
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_30_sim_box_50_human \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_30_sim_box_50_human-TEST-3 \
+--policy_class DETRVAE --kl_weight 30 --window_len 120 --hidden_dim 512 --batch_size 8 --dim_feedforward 4096 \
+--task_name transfer_cube --seed 0
+# BAD
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_30_sim_box_50_human \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_30_sim_box_50_human-TEST-4 \
+--policy_class DETRVAE --kl_weight 30 --window_len 30 --hidden_dim 512 --batch_size 8 --dim_feedforward 4096 \
+--task_name transfer_cube --seed 0
+# BAD
+
+# maybe just train more?
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_30_sim_box_50_human \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_30_sim_box_50_human-TEST-5 \
+--policy_class DETRVAE --kl_weight 30 --window_len 60 --hidden_dim 512 --batch_size 8 --dim_feedforward 4096 \
+--task_name transfer_cube --seed 0
+# 30
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_30_sim_box_50_human \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_30_sim_box_50_human-TEST-6 \
+--policy_class DETRVAE --kl_weight 30 --window_len 60 --hidden_dim 1024 --batch_size 8 --dim_feedforward 4096 \
+--task_name transfer_cube --seed 0
+# bad
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_30_sim_box_50_human \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_30_sim_box_50_human-TEST-7 \
+--policy_class DETRVAE --kl_weight 30 --window_len 60 --hidden_dim 512 --batch_size 8 --dim_feedforward 6144 \
+--task_name transfer_cube --seed 0
+# bad
+
+
+#########
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_30_sim_box_50_human \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_30_sim_box_50_human-Tweak-seed-0 \
+--policy_class DETRVAE --kl_weight 40 --window_len 60 --hidden_dim 512 --batch_size 8 --dim_feedforward 4096 \
+--task_name transfer_cube --seed 0 --eval
+
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_30_sim_box_50_human \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_30_sim_box_50_human-Tweak-seed-1 \
+--policy_class DETRVAE --kl_weight 40 --window_len 60 --hidden_dim 512 --batch_size 8 --dim_feedforward 4096 \
+--task_name transfer_cube --seed 1 --eval
+
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_30_sim_box_50_human \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_30_sim_box_50_human-Tweak-seed-2 \
+--policy_class DETRVAE --kl_weight 40 --window_len 60 --hidden_dim 512 --batch_size 8 --dim_feedforward 4096 \
+--task_name transfer_cube --seed 2 --eval
+
+### MAJOR REGRESSION
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_25_sim_transfer_box_top_view_win400-seed-0-fix-regression \
+--policy_class DETRVAE --kl_weight 10 --window_len 400 --hidden_dim 256 --batch_size 8 --dim_feedforward 2048 \
+--task_name transfer_cube --seed 0
+
+
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_25_sim_transfer_box_top_view_win400-seed-1-fix-regression \
+--policy_class DETRVAE --kl_weight 10 --window_len 400 --hidden_dim 256 --batch_size 8 --dim_feedforward 2048 \
+--task_name transfer_cube --seed 1
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_25_sim_transfer_box_top_view_win400-seed-2-fix-regression \
+--policy_class DETRVAE --kl_weight 10 --window_len 400 --hidden_dim 256 --batch_size 8 --dim_feedforward 2048 \
+--task_name transfer_cube --seed 2
+
+### TODO TODO try with and without time ensemble!
+
+
+### Retry with 200 window
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_25_sim_transfer_box_top_view_sweep-1 \
+--policy_class DETRVAE --kl_weight 10 --window_len 200 --hidden_dim 256 --batch_size 8 --dim_feedforward 2048 \
+--task_name transfer_cube --seed 0 --eval
+
+Reward >= 0: 50/50 = 100.0%
+Reward >= 1: 42/50 = 84.0%
+Reward >= 2: 40/50 = 80.0%
+Reward >= 3: 36/50 = 72.0%
+Reward >= 4: 36/50 = 72.0%
+
+After time ensemble
+Reward >= 0: 50/50 = 100.0%
+Reward >= 1: 48/50 = 96.0%
+Reward >= 2: 46/50 = 92.0%
+Reward >= 3: 45/50 = 90.0%
+Reward >= 4: 45/50 = 90.0%
+
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_25_sim_transfer_box_top_view_sweep-1-seed-1 \
+--policy_class DETRVAE --kl_weight 10 --window_len 200 --hidden_dim 256 --batch_size 8 --dim_feedforward 2048 \
+--task_name transfer_cube --seed 1
+Reward >= 0: 50/50 = 100.0%
+Reward >= 1: 38/50 = 76.0%
+Reward >= 2: 34/50 = 68.0%
+Reward >= 3: 14/50 = 28.000000000000004%
+Reward >= 4: 14/50 = 28.000000000000004%
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_25_sim_transfer_box_top_view_sweep-1-seed-2 \
+--policy_class DETRVAE --kl_weight 10 --window_len 200 --hidden_dim 256 --batch_size 8 --dim_feedforward 2048 \
+--task_name transfer_cube --seed 2
+Reward >= 0: 50/50 = 100.0%
+Reward >= 1: 17/50 = 34.0%
+Reward >= 2: 9/50 = 18.0%
+Reward >= 3: 2/50 = 4.0%
+Reward >= 4: 2/50 = 4.0%
+
+###
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_25_sim_transfer_box_top_view_sweep-3-seed-0 \
+--policy_class DETRVAE --kl_weight 10 --window_len 50 --hidden_dim 256 --batch_size 8 --dim_feedforward 2048 \
+--task_name transfer_cube --seed 0
+Reward >= 0: 50/50 = 100.0%
+Reward >= 1: 41/50 = 82.0%
+Reward >= 2: 37/50 = 74.0%
+Reward >= 3: 23/50 = 46.0%
+Reward >= 4: 23/50 = 46.0%
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_25_sim_transfer_box_top_view_sweep-3-seed-1 \
+--policy_class DETRVAE --kl_weight 10 --window_len 50 --hidden_dim 256 --batch_size 8 --dim_feedforward 2048 \
+--task_name transfer_cube --seed 1
+Reward >= 0: 50/50 = 100.0%
+Reward >= 1: 32/50 = 64.0%
+Reward >= 2: 13/50 = 26.0%
+Reward >= 3: 1/50 = 2.0%
+Reward >= 4: 1/50 = 2.0%
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_25_sim_transfer_box_top_view_sweep-3-seed-2 \
+--policy_class DETRVAE --kl_weight 10 --window_len 50 --hidden_dim 256 --batch_size 8 --dim_feedforward 2048 \
+--task_name transfer_cube --seed 2
+Reward >= 0: 50/50 = 100.0%
+Reward >= 1: 45/50 = 90.0%
+Reward >= 2: 41/50 = 82.0%
+Reward >= 3: 21/50 = 42.0%
+Reward >= 4: 21/50 = 42.0%
+
+
+# others
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_25_sim_transfer_box_top_view_win400-seed-0-1 \
+--policy_class DETRVAE --kl_weight 10 --window_len 400 --hidden_dim 512 --batch_size 8 --dim_feedforward 2048 \
+--task_name transfer_cube --seed 0
+
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_25_sim_transfer_box_top_view_win400-seed-1 \
+--policy_class DETRVAE --kl_weight 30 --window_len 400 --hidden_dim 512 --batch_size 8 --dim_feedforward 4096 \
+--task_name transfer_cube --seed 1
+
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_25_sim_transfer_box_top_view_win400-seed-2 \
+--policy_class DETRVAE --kl_weight 30 --window_len 400 --hidden_dim 512 --batch_size 8 --dim_feedforward 4096 \
+--task_name transfer_cube --seed 2
+
+
+
+
+# TODO compare with no VAE
+
+####################################################################################################
+###################################### Paper Experiments ###########################################
+####################################################################################################
+
+### train 3 seeds of BYOL on scripted and human data
+
+srun --account=iris -p iris-interactive --mem=20GB --gres=gpu:1 --pty bash
+
+rsync -ra  /scr/tonyzhao/datasets/ tonyzhao@scdt:/iris/u/tonyzhao/datasets
+
+cd /iris/u/tonyzhao/Research/interbotix-src/interbotix_ros_manipulators/interbotix_ros_xsarms/examples/teleoperation/python_scripts/examples/byol_pytorch/examples/lightning
+conda activate tonyz-fm
+
+python3 train.py --dataset_dir /iris/u/tonyzhao/datasets/12_25_sim_transfer_box_top_view  --seed 0 # DONE
+python3 train.py --dataset_dir /iris/u/tonyzhao/datasets/12_25_sim_transfer_box_top_view  --seed 1 # DONE
+python3 train.py --dataset_dir /iris/u/tonyzhao/datasets/12_25_sim_transfer_box_top_view  --seed 2 # DONE
+
+python3 train.py --dataset_dir /iris/u/tonyzhao/datasets/12_30_sim_box_50_human  --seed 0 # DONE
+python3 train.py --dataset_dir /iris/u/tonyzhao/datasets/12_30_sim_box_50_human  --seed 1 # DONE
+python3 train.py --dataset_dir /iris/u/tonyzhao/datasets/12_30_sim_box_50_human  --seed 2 # DONE
+
+python3 train.py --dataset_dir /iris/u/tonyzhao/datasets/1_9_sim_insertion  --seed 0
+python3 train.py --dataset_dir /iris/u/tonyzhao/datasets/1_9_sim_insertion  --seed 1
+python3 train.py --dataset_dir /iris/u/tonyzhao/datasets/1_9_sim_insertion  --seed 2
+
+
+# sync the checkpoints back
+rsync -ra tonyzhao@scdt:/iris/u/tonyzhao/Research/interbotix-src/interbotix_ros_manipulators/interbotix_ros_xsarms/examples/teleoperation/python_scripts/examples/byol_pytorch/examples/lightning/*.pt /scr/tonyzhao/remote_trained
+
+
+### Cache feature for all models
+# LOCAL
+launch
+python3 examples/cache_feature.py --ckpt_path /scr/tonyzhao/remote_trained/byol-12_25_sim_transfer_box_top_view-seed-0.pt # DONE
+python3 examples/cache_feature.py --ckpt_path /scr/tonyzhao/remote_trained/byol-12_25_sim_transfer_box_top_view-seed-1.pt # DONE
+python3 examples/cache_feature.py --ckpt_path /scr/tonyzhao/remote_trained/byol-12_25_sim_transfer_box_top_view-seed-2.pt # DONE
+
+python3 examples/cache_feature.py --ckpt_path /scr/tonyzhao/remote_trained/byol-12_30_sim_box_50_human-seed-0.pt # DONE
+python3 examples/cache_feature.py --ckpt_path /scr/tonyzhao/remote_trained/byol-12_30_sim_box_50_human-seed-1.pt # DONE
+python3 examples/cache_feature.py --ckpt_path /scr/tonyzhao/remote_trained/byol-12_30_sim_box_50_human-seed-2.pt # DONE
+
+
+# REMOTE
+cd /iris/u/tonyzhao/Research/interbotix-src/interbotix_ros_manipulators/interbotix_ros_xsarms/examples/teleoperation/python_scripts
+conda activate tonyz-fm
+
+# DONE
+python3 examples/cache_feature.py --ckpt_path /iris/u/tonyzhao/Research/interbotix-src/interbotix_ros_manipulators/interbotix_ros_xsarms/examples/teleoperation/python_scripts/examples/byol_pytorch/examples/lightning/byol-12_25_sim_transfer_box_top_view-seed-0.pt
+python3 examples/cache_feature.py --ckpt_path /iris/u/tonyzhao/Research/interbotix-src/interbotix_ros_manipulators/interbotix_ros_xsarms/examples/teleoperation/python_scripts/examples/byol_pytorch/examples/lightning/byol-12_25_sim_transfer_box_top_view-seed-1.pt
+python3 examples/cache_feature.py --ckpt_path /iris/u/tonyzhao/Research/interbotix-src/interbotix_ros_manipulators/interbotix_ros_xsarms/examples/teleoperation/python_scripts/examples/byol_pytorch/examples/lightning/byol-12_25_sim_transfer_box_top_view-seed-2.pt
+
+# DONE
+python3 examples/cache_feature.py --ckpt_path /iris/u/tonyzhao/Research/interbotix-src/interbotix_ros_manipulators/interbotix_ros_xsarms/examples/teleoperation/python_scripts/examples/byol_pytorch/examples/lightning/byol-12_30_sim_box_50_human-seed-0.pt
+python3 examples/cache_feature.py --ckpt_path /iris/u/tonyzhao/Research/interbotix-src/interbotix_ros_manipulators/interbotix_ros_xsarms/examples/teleoperation/python_scripts/examples/byol_pytorch/examples/lightning/byol-12_30_sim_box_50_human-seed-1.pt
+python3 examples/cache_feature.py --ckpt_path /iris/u/tonyzhao/Research/interbotix-src/interbotix_ros_manipulators/interbotix_ros_xsarms/examples/teleoperation/python_scripts/examples/byol_pytorch/examples/lightning/byol-12_30_sim_box_50_human-seed-2.pt
+
+
+### VINN
+
+# Scripted data
+# select K
+python3 examples/vinn_select_k.py # hardcode parameters
+
+# LOCAL
+mkdir /scr/tonyzhao/train_logs/vinn_12_25_sim_transfer_box_top_view-seed-0
+python3 examples/vinn_eval.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--model_dir /scr/tonyzhao/remote_trained/byol-12_25_sim_transfer_box_top_view-seed-0.pt \
+--task_name transfer_cube \
+--ckpt_dir /scr/tonyzhao/train_logs/vinn_12_25_sim_transfer_box_top_view-seed-0
+# RECORDED
+
+mkdir /scr/tonyzhao/train_logs/vinn_12_25_sim_transfer_box_top_view-seed-1
+python3 examples/vinn_eval.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--model_dir /scr/tonyzhao/remote_trained/byol-12_25_sim_transfer_box_top_view-seed-1.pt \
+--task_name transfer_cube \
+--ckpt_dir /scr/tonyzhao/train_logs/vinn_12_25_sim_transfer_box_top_view-seed-1
+# RECORDED
+
+mkdir /scr/tonyzhao/train_logs/vinn_12_25_sim_transfer_box_top_view-seed-2
+python3 examples/vinn_eval.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--model_dir /scr/tonyzhao/remote_trained/byol-12_25_sim_transfer_box_top_view-seed-2.pt \
+--task_name transfer_cube \
+--ckpt_dir /scr/tonyzhao/train_logs/vinn_12_25_sim_transfer_box_top_view-seed-2
+# RECORDED
+
+# Human data
+# select K
+python3 examples/vinn_select_k.py # hardcode parameters
+
+# LOCAL
+mkdir /scr/tonyzhao/train_logs/vinn-12_30_sim_box_50_human-seed-0
+python3 examples/vinn_eval.py \
+--dataset_dir /scr/tonyzhao/datasets/12_30_sim_box_50_human \
+--model_dir /scr/tonyzhao/remote_trained/byol-12_30_sim_box_50_human-seed-0.pt \
+--task_name transfer_cube \
+--ckpt_dir /scr/tonyzhao/train_logs/vinn-12_30_sim_box_50_human-seed-0
+# RECORDED
+
+mkdir /scr/tonyzhao/train_logs/vinn-12_30_sim_box_50_human-seed-1
+python3 examples/vinn_eval.py \
+--dataset_dir /scr/tonyzhao/datasets/12_30_sim_box_50_human \
+--model_dir /scr/tonyzhao/remote_trained/byol-12_30_sim_box_50_human-seed-1.pt \
+--task_name transfer_cube \
+--ckpt_dir /scr/tonyzhao/train_logs/vinn-12_30_sim_box_50_human-seed-1
+# RECORDED
+
+mkdir /scr/tonyzhao/train_logs/vinn-12_30_sim_box_50_human-seed-2
+python3 examples/vinn_eval.py \
+--dataset_dir /scr/tonyzhao/datasets/12_30_sim_box_50_human \
+--model_dir /scr/tonyzhao/remote_trained/byol-12_30_sim_box_50_human-seed-2.pt \
+--task_name transfer_cube \
+--ckpt_dir /scr/tonyzhao/train_logs/vinn-12_30_sim_box_50_human-seed-2
+# RECORDED
+
+
+
+### BET
+
+# LOCAL
+
+# Scripted data
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--model_dir /scr/tonyzhao/remote_trained/byol-12_25_sim_transfer_box_top_view-seed-0.pt \
+--ckpt_dir /scr/tonyzhao/train_logs/bet-12_25_sim_transfer_box_top_view-seed-0 \
+--window_len 100 --n_embd 1500 --state_repeat 10 --seed 0
+# RECORDED
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--model_dir /scr/tonyzhao/remote_trained/byol-12_25_sim_transfer_box_top_view-seed-1.pt \
+--ckpt_dir /scr/tonyzhao/train_logs/bet-12_25_sim_transfer_box_top_view-seed-1 \
+--window_len 100 --n_embd 1500 --state_repeat 10 --seed 1
+# RECORDED
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--model_dir /scr/tonyzhao/remote_trained/byol-12_25_sim_transfer_box_top_view-seed-2.pt \
+--ckpt_dir /scr/tonyzhao/train_logs/bet-12_25_sim_transfer_box_top_view-seed-2 \
+--window_len 100 --n_embd 1500 --state_repeat 10 --seed 2
+# RECORDED
+
+# Human data
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_30_sim_box_50_human \
+--model_dir /scr/tonyzhao/remote_trained/byol-12_30_sim_box_50_human-seed-0.pt \
+--ckpt_dir /scr/tonyzhao/train_logs/bet-12_30_sim_box_50_human-seed-0 \
+--window_len 100 --n_embd 1500 --state_repeat 10 --seed 0
+# RECORDED
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_30_sim_box_50_human \
+--model_dir /scr/tonyzhao/remote_trained/byol-12_30_sim_box_50_human-seed-1.pt \
+--ckpt_dir /scr/tonyzhao/train_logs/bet-12_30_sim_box_50_human-seed-1 \
+--window_len 100 --n_embd 1500 --state_repeat 10 --seed 1
+# RECORDED
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_30_sim_box_50_human \
+--model_dir /scr/tonyzhao/remote_trained/byol-12_30_sim_box_50_human-seed-2.pt \
+--ckpt_dir /scr/tonyzhao/train_logs/bet-12_30_sim_box_50_human-seed-2 \
+--window_len 100 --n_embd 1500 --state_repeat 10 --seed 2
+# RECORDED
+
+# REMOTE # not used
+python3 examples/imitate_episodes.py \
+--dataset_dir /iris/u/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--model_dir /iris/u/tonyzhao/Research/interbotix-src/interbotix_ros_manipulators/interbotix_ros_xsarms/examples/teleoperation/python_scripts/examples/byol_pytorch/examples/lightning/byol-12_25_sim_transfer_box_top_view-seed-0.pt
+--ckpt_dir /iris/u/tonyzhao/train_logs/1_10_sim_box_bet_vision_byol_try2 \
+--window_len 100 --n_embd 1500 --state_repeat 10 --seed 0
+
+
+### MLP
+
+# scripted data
+# LOCAL
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /scr/tonyzhao/train_logs/CNNMLP_12_25_sim_transfer_box_top_view-seed-0 \
+--policy_class CNNMLP --batch_size 16 --seed 0 --task_name transfer_cube
+
+# Remote
+python3 examples/imitate_episodes.py \
+--dataset_dir /iris/u/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /iris/u/tonyzhao/train_logs/CNNMLP_12_25_sim_transfer_box_top_view-seed-0 \
+--policy_class CNNMLP --batch_size 16 --seed 0 --task_name transfer_cube
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /iris/u/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /iris/u/tonyzhao/train_logs/CNNMLP_12_25_sim_transfer_box_top_view-seed-1 \
+--policy_class CNNMLP --batch_size 16 --seed 1 --task_name transfer_cube
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /iris/u/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /iris/u/tonyzhao/train_logs/CNNMLP_12_25_sim_transfer_box_top_view-seed-2 \
+--policy_class CNNMLP --batch_size 16 --seed 2 --task_name transfer_cube
+
+# human data
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /iris/u/tonyzhao/datasets/12_30_sim_box_50_human \
+--ckpt_dir /iris/u/tonyzhao/train_logs/CNNMLP_12_30_sim_box_50_human-seed-0 \
+--policy_class CNNMLP --batch_size 16 --seed 0 --task_name transfer_cube
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /iris/u/tonyzhao/datasets/12_30_sim_box_50_human \
+--ckpt_dir /iris/u/tonyzhao/train_logs/CNNMLP_12_30_sim_box_50_human-seed-1 \
+--policy_class CNNMLP --batch_size 16 --seed 1 --task_name transfer_cube
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /iris/u/tonyzhao/datasets/12_30_sim_box_50_human \
+--ckpt_dir /iris/u/tonyzhao/train_logs/CNNMLP_12_30_sim_box_50_human-seed-2 \
+--policy_class CNNMLP --batch_size 16 --seed 2 --task_name transfer_cube
+
+
+### DETR VAE with human data
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_30_sim_box_50_human \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_30_sim_box_50_human-TEST-2 \
+--policy_class DETRVAE --kl_weight 30 --window_len 60 --hidden_dim 512 --batch_size 8 --dim_feedforward 4096 \
+--task_name transfer_cube --seed 0
+# Recorded
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_30_sim_box_50_human \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_30_sim_box_50_human-TEST-2-seed-1 \
+--policy_class DETRVAE --kl_weight 30 --window_len 60 --hidden_dim 512 --batch_size 8 --dim_feedforward 4096 \
+--task_name transfer_cube --seed 1
+# Recorded
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_30_sim_box_50_human \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_30_sim_box_50_human-TEST-2-seed-2 \
+--policy_class DETRVAE --kl_weight 30 --window_len 60 --hidden_dim 512 --batch_size 8 --dim_feedforward 4096 \
+--task_name transfer_cube --seed 2
+# Recorded
+
+
+### DETR VAE with scripted data
+
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_25_sim_transfer_box_top_view_win60-seed-0 \
+--policy_class DETRVAE --kl_weight 30 --window_len 60 --hidden_dim 512 --batch_size 8 --dim_feedforward 4096 \
+--task_name transfer_cube --seed 0 --eval
+# Recorded # TODO also run time ensemble version?
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_25_sim_transfer_box_top_view_win60-seed-1 \
+--policy_class DETRVAE --kl_weight 30 --window_len 60 --hidden_dim 512 --batch_size 8 --dim_feedforward 4096 \
+--task_name transfer_cube --seed 1
+# Recorded # TODO also run time ensemble version?
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_25_sim_transfer_box_top_view_win60-seed-2 \
+--policy_class DETRVAE --kl_weight 30 --window_len 60 --hidden_dim 512 --batch_size 8 --dim_feedforward 4096 \
+--task_name transfer_cube --seed 2
+# Recorded, with time ensemble
+
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_25_sim_transfer_box_top_view_sweep-2-seed-0 \
+--policy_class DETRVAE --kl_weight 10 --window_len 100 --hidden_dim 256 --batch_size 8 --dim_feedforward 2048 \
+--task_name transfer_cube --seed 0
+# Recorded
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_25_sim_transfer_box_top_view_sweep-2-seed-1 \
+--policy_class DETRVAE --kl_weight 10 --window_len 100 --hidden_dim 256 --batch_size 8 --dim_feedforward 2048 \
+--task_name transfer_cube --seed 1
+# Recorded
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr/tonyzhao/datasets/12_25_sim_transfer_box_top_view \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_12_25_sim_transfer_box_top_view_sweep-2-seed-2 \
+--policy_class DETRVAE --kl_weight 10 --window_len 100 --hidden_dim 256 --batch_size 8 --dim_feedforward 2048 \
+--task_name transfer_cube --seed 2
+# Recorded
+
+
+
+###############################################################
+### Real robot experiments
+###############################################################
+
+### Ziploc slide
+
+python3 examples/record_episodes.py --dataset_dir /scr2/tonyzhao/datasets/1_20_zip_slide --episode_idx 0
+
+# Ours
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_20_zip_slide \
+--ckpt_dir /scr/tonyzhao/train_logs/DETRVAE_1_20_zip_slide-seed-0 \
+--policy_class DETRVAE --kl_weight 30 --window_len 60 --hidden_dim 512 --batch_size 2 --dim_feedforward 4096 \
+--task_name ziploc_slide --seed 0
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_20_zip_slide \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_20_zip_slide-seed-0-1 \
+--policy_class DETRVAE --kl_weight 20 --window_len 60 --hidden_dim 256 --batch_size 4 --dim_feedforward 2048 \
+--task_name ziploc_slide --seed 0
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_20_zip_slide \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_20_zip_slide-seed-0-2 \
+--policy_class DETRVAE --kl_weight 30 --window_len 60 --hidden_dim 256 --batch_size 4 --dim_feedforward 2048 \
+--task_name ziploc_slide --seed 0
+# BEST
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_20_zip_slide \
+--ckpt_dir /scr2/tonyzhao/train_logs/CNNMLP_1_20_zip_slide-seed-0 \
+--policy_class CNNMLP --batch_size 4 \
+--task_name ziploc_slide --seed 0
+
+
+### Ziploc open
+
+python3 examples/record_episodes.py --dataset_dir /scr2/tonyzhao/datasets/1_21_zipoc --episode_idx 0
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_21_zipoc \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_21_zipoc-seed-0 \
+--policy_class DETRVAE --kl_weight 30 --window_len 60 --hidden_dim 256 --batch_size 4 --dim_feedforward 2048 \
+--task_name ziploc --seed 0
+
+# overnight
+
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_21_zipoc \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_21_zipoc-seed-0-1 \
+--policy_class DETRVAE --kl_weight 30 --window_len 60 --hidden_dim 512 --batch_size 4 --dim_feedforward 3200 \
+--task_name ziploc --seed 0 --eval
+
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_21_zipoc \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_21_zipoc-seed-0-2 \
+--policy_class DETRVAE --kl_weight 50 --window_len 60 --hidden_dim 512 --batch_size 4 --dim_feedforward 3200 \
+--task_name ziploc --seed 0 --eval
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_21_zipoc \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_21_zipoc-seed-0-3 \
+--policy_class DETRVAE --kl_weight 80 --window_len 60 --hidden_dim 512 --batch_size 4 --dim_feedforward 3200 \
+--task_name ziploc --seed 0 --eval
+
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_21_zipoc \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_21_zipoc-seed-0-4 \
+--policy_class DETRVAE --kl_weight 100 --window_len 60 --hidden_dim 512 --batch_size 4 --dim_feedforward 3200 \
+--task_name ziploc --seed 0 --eval
+
+### 1 conv only
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_21_zipoc \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_22_zipoc-seed-0-1conv \
+--policy_class DETRVAE --kl_weight 80 --window_len 60 --hidden_dim 512 --batch_size 4 --dim_feedforward 3200 \
+--task_name ziploc --seed 0
+
+# just train for longer
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_21_zipoc \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_22_zipoc-seed-0-1conv_longer \
+--policy_class DETRVAE --kl_weight 80 --window_len 60 --hidden_dim 512 --batch_size 4 --dim_feedforward 3200 \
+--task_name ziploc --seed 0
+
+
+rsync -ra tonyzhao@scdt:/iris/u/tonyzhao/train_logs/DETRVAE_1_22_zipoc-seed-0-try1 /scr/tonyzhao/remote_trained/DETRVAE_1_22_zipoc-seed-0-try1
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_21_zipoc \
+--ckpt_dir /scr/tonyzhao/remote_trained/DETRVAE_1_22_zipoc-seed-0-try1 \
+--policy_class DETRVAE --kl_weight 80 --window_len 60 --hidden_dim 1024 --batch_size 8 --dim_feedforward 4096 \
+--task_name ziploc --seed 0
+
+
+
+Do we need the VAE?
+
+python3 examples/record_episodes.py --dataset_dir /scr2/tonyzhao/datasets/1_22_zipoc_fixed --episode_idx 0
+
+
+### Condiment cups
+
+python3 examples/record_episodes.py --dataset_dir /scr2/tonyzhao/datasets/1_22_cups_open --episode_idx 0
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_22_cups_open \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_22_cups_open-seed-0 \
+--policy_class DETRVAE --kl_weight 80 --window_len 60 --hidden_dim 512 --batch_size 4 --dim_feedforward 3200 \
+--task_name cup_open --seed 0 --eval
+
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_22_cups_open \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_22_cups_open-seed-0-1 \
+--policy_class DETRVAE --kl_weight 80 --window_len 60 --hidden_dim 512 --batch_size 4 --dim_feedforward 3200 \
+--task_name cup_open --seed 0 --eval
+
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_22_cups_open \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_22_cups_open-seed-0-2 \
+--policy_class DETRVAE --kl_weight 100 --window_len 60 --hidden_dim 512 --batch_size 4 --dim_feedforward 3200 \
+--task_name cup_open --seed 0 --eval
+
+### Condiment cups2
+
+python3 examples/record_episodes.py --dataset_dir /scr2/tonyzhao/datasets/1_23_cups_open --episode_idx 0
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_23_cups_open \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_23_cups_open-seed-0 \
+--policy_class DETRVAE --kl_weight 80 --window_len 60 --hidden_dim 512 --batch_size 4 --dim_feedforward 3200 \
+--task_name cup_open --seed 0
+
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_23_cups_open \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_23_cups_open-seed-0-longwindow \
+--policy_class DETRVAE --kl_weight 80 --window_len 90 --hidden_dim 512 --batch_size 4 --dim_feedforward 3200 \
+--task_name cup_open --seed 0
+
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_23_cups_open \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_23_cups_open-seed-0-longer \
+--policy_class DETRVAE --kl_weight 80 --window_len 60 --hidden_dim 512 --batch_size 4 --dim_feedforward 3200 \
+--task_name cup_open --seed 0
+
+
+
+
+### Battery slotting
+
+python3 examples/record_episodes.py --dataset_dir /scr2/tonyzhao/datasets/1_23_battery --episode_idx 0
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_23_battery \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_23_battery-seed-0 \
+--policy_class DETRVAE --kl_weight 80 --window_len 60 --hidden_dim 512 --batch_size 4 --dim_feedforward 3200 \
+--task_name battery --seed 0
+
+### Battery slotting try 2
+
+python3 examples/record_episodes.py --dataset_dir /scr2/tonyzhao/datasets/1_24_battery --episode_idx 0
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_24_battery \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_24_battery-seed-0 \
+--policy_class DETRVAE --kl_weight 80 --window_len 90 --hidden_dim 512 --batch_size 4 --dim_feedforward 3000 \
+--task_name battery --seed 0 --eval
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_24_battery \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_24_battery-seed-0_try2 \
+--policy_class DETRVAE --kl_weight 80 --window_len 120 --hidden_dim 512 --batch_size 4 --dim_feedforward 3000 \
+--task_name battery --seed 0 --eval
+
+
+### Battery slotting try 3
+
+python3 examples/record_episodes.py --dataset_dir /scr2/tonyzhao/datasets/1_25_battery --episode_idx 0
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_25_battery \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_25_battery-seed-0 \
+--policy_class DETRVAE --kl_weight 80 --window_len 90 --hidden_dim 512 --batch_size 4 --dim_feedforward 3000 \
+--task_name battery --seed 0
+
+
+
+### Taping
+
+python3 examples/record_episodes.py --dataset_dir /scr2/tonyzhao/datasets/1_26_tape --episode_idx 0
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_26_tape \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_26_tape-seed-0 \
+--policy_class DETRVAE --kl_weight 80 --window_len 90 --hidden_dim 512 --batch_size 4 --dim_feedforward 3000 \
+--task_name tape --seed 0
+
+
+### Candy!
+
+python3 examples/record_episodes.py --dataset_dir /scr2/tonyzhao/datasets/1_27_candy --episode_idx 0
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_27_candy \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_27_candy-seed-0 \
+--policy_class DETRVAE --kl_weight 80 --window_len 90 --hidden_dim 512 --batch_size 4 --dim_feedforward 3000 \
+--task_name tape --seed 0
+
+
+
+python3 examples/imitate_episodes.py \
+--dataset_dir /scr2/tonyzhao/datasets/1_27_candy \
+--ckpt_dir /scr2/tonyzhao/train_logs/DETRVAE_1_27_candy-seed-0-1 \
+--policy_class DETRVAE --kl_weight 80 --window_len 120 --hidden_dim 512 --batch_size 4 --dim_feedforward 3000 \
+--task_name tape --seed 0
+
+
+
+
+
+
+
+
+
