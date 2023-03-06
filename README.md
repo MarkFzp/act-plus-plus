@@ -47,11 +47,11 @@ To set up a new terminal, run:
 
 ### Simulated experiments
 
-We use ``transfer_cube`` task in the examples below. Another option is ``insertion``.
+We use ``sim_transfer_cube_scripted`` task in the examples below. Another option is ``sim_insertion_scripted``.
 To generated 50 episodes of scripted data, run:
 
     python3 record_sim_episodes.py \
-    --task_name transfer_cube \
+    --task_name sim_transfer_cube_scripted \
     --dataset_dir <data save dir> \
     --num_episodes 50
 
@@ -64,24 +64,15 @@ To train ACT:
     
     # Transfer Cube task
     python3 imitate_episodes.py \
-    --dataset_dir <data save dir> \
+    --task_name sim_transfer_cube_scripted \
     --ckpt_dir <ckpt dir> \
-    --policy_class ACT --kl_weight 10 --chunk_size 100 --hidden_dim 256 --batch_size 8 --dim_feedforward 2048 \
-    --task_name transfer_cube --seed 0 \
-    --temporal_agg \
-    --num_epochs 1000  --lr 1e-4
-    
-    # Bimanual Insertion task
-    python3 imitate_episodes.py \
-    --dataset_dir <data save dir> \
-    --ckpt_dir <ckpt dir> \
-    --policy_class ACT --kl_weight 10 --chunk_size 100 --hidden_dim 256 --batch_size 8 --dim_feedforward 2048 \
-    --task_name insertion --seed 0 \
-    --temporal_agg \
-    --num_epochs 2000  --lr 1e-5
+    --policy_class ACT --kl_weight 10 --chunk_size 100 --hidden_dim 512 --batch_size 8 --dim_feedforward 3200 \
+    --num_epochs 2000  --lr 1e-5 \
+    --seed 0
+
 
 To evaluate the policy, run the same command but add ``--eval``. The success rate
-should be around 85% for transfer cube, and around 50% for insertion.
+should be around 90% for transfer cube, and around 50% for insertion.
 Videos will be saved to ``<ckpt_dir>`` for each rollout.
 You can also add ``--onscreen_render`` to see real-time rendering during evaluation.
 

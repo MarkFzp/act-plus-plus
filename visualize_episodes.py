@@ -5,7 +5,7 @@ import h5py
 import argparse
 
 import matplotlib.pyplot as plt
-from constants import DT, CAMERA_NAMES, SIM_CAMERA_NAMES
+from constants import DT
 
 import IPython
 e = IPython.embed
@@ -25,8 +25,7 @@ def load_hdf5(dataset_dir, dataset_name):
         qvel = root['/observations/qvel'][()]
         action = root['/action'][()]
         image_dict = dict()
-        camera_names = SIM_CAMERA_NAMES if is_sim else CAMERA_NAMES
-        for cam_name in camera_names:
+        for cam_name in root[f'/observations/images/'].keys():
             image_dict[cam_name] = root[f'/observations/images/{cam_name}'][()]
 
     return qpos, qvel, action, image_dict

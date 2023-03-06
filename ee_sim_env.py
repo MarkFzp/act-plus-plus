@@ -35,13 +35,15 @@ def make_ee_sim_env(task_name):
                                         right_gripper_qvel (1)]     # normalized gripper velocity (pos: opening, neg: closing)
                         "images": {"main": (480x640x3)}        # h, w, c, dtype='uint8'
     """
-    xml_path = os.path.join(XML_DIR, f'bimanual_viperx_ee_{task_name}.xml')
-    physics = mujoco.Physics.from_xml_path(xml_path)
-    if task_name == 'transfer_cube':
+    if 'sim_transfer_cube' in task_name:
+        xml_path = os.path.join(XML_DIR, f'bimanual_viperx_ee_transfer_cube.xml')
+        physics = mujoco.Physics.from_xml_path(xml_path)
         task = TransferCubeEETask(random=False)
         env = control.Environment(physics, task, time_limit=20, control_timestep=DT,
                                   n_sub_steps=None, flat_observation=False)
-    elif task_name == 'insertion':
+    elif 'sim_insertion' in task_name:
+        xml_path = os.path.join(XML_DIR, f'bimanual_viperx_ee_insertion.xml')
+        physics = mujoco.Physics.from_xml_path(xml_path)
         task = InsertionEETask(random=False)
         env = control.Environment(physics, task, time_limit=20, control_timestep=DT,
                                   n_sub_steps=None, flat_observation=False)
@@ -133,8 +135,9 @@ class BimanualViperXEETask(base.Task):
         obs['qvel'] = self.get_qvel(physics)
         obs['env_state'] = self.get_env_state(physics)
         obs['images'] = dict()
-        obs['images']['main'] = physics.render(height=480, width=640, camera_id='main') # TODO hardcoded camera name
-
+        obs['images']['top'] = physics.render(height=480, width=640, camera_id='top')
+        obs['images']['angle'] = physics.render(height=480, width=640, camera_id='angle')
+        obs['images']['vis'] = physics.render(height=480, width=640, camera_id='front_close')
         # used in scripted policy to obtain starting pose
         obs['mocap_pose_left'] = np.concatenate([physics.data.mocap_pos[0], physics.data.mocap_quat[0]]).copy()
         obs['mocap_pose_right'] = np.concatenate([physics.data.mocap_pos[1], physics.data.mocap_quat[1]]).copy()

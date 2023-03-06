@@ -6,7 +6,7 @@ from dm_control import mujoco
 from dm_control.rl import control
 from dm_control.suite import base
 
-from constants import DT, XML_DIR, START_ARM_POSE, BOX_INIT_POSE
+from constants import DT, XML_DIR, START_ARM_POSE
 from constants import PUPPET_GRIPPER_POSITION_UNNORMALIZE_FN
 from constants import MASTER_GRIPPER_POSITION_NORMALIZE_FN
 from constants import PUPPET_GRIPPER_POSITION_NORMALIZE_FN
@@ -35,13 +35,15 @@ def make_sim_env(task_name):
                                         right_gripper_qvel (1)]     # normalized gripper velocity (pos: opening, neg: closing)
                         "images": {"main": (480x640x3)}        # h, w, c, dtype='uint8'
     """
-    xml_path = os.path.join(XML_DIR, f'bimanual_viperx_{task_name}.xml')
-    physics = mujoco.Physics.from_xml_path(xml_path)
-    if task_name == 'transfer_cube':
+    if 'sim_transfer_cube' in task_name:
+        xml_path = os.path.join(XML_DIR, f'bimanual_viperx_transfer_cube.xml')
+        physics = mujoco.Physics.from_xml_path(xml_path)
         task = TransferCubeTask(random=False)
         env = control.Environment(physics, task, time_limit=20, control_timestep=DT,
                                   n_sub_steps=None, flat_observation=False)
-    elif task_name == 'insertion':
+    elif 'sim_insertion' in task_name:
+        xml_path = os.path.join(XML_DIR, f'bimanual_viperx_insertion.xml')
+        physics = mujoco.Physics.from_xml_path(xml_path)
         task = InsertionTask(random=False)
         env = control.Environment(physics, task, time_limit=20, control_timestep=DT,
                                   n_sub_steps=None, flat_observation=False)
@@ -105,8 +107,9 @@ class BimanualViperXTask(base.Task):
         obs['qvel'] = self.get_qvel(physics)
         obs['env_state'] = self.get_env_state(physics)
         obs['images'] = dict()
-        obs['images']['main'] = physics.render(height=480, width=640, camera_id='top') # TODO hardcoded camera name
-        obs['images']['vis'] = physics.render(height=480, width=640, camera_id='front_close') # TODO hardcoded camera name
+        obs['images']['top'] = physics.render(height=480, width=640, camera_id='top')
+        obs['images']['angle'] = physics.render(height=480, width=640, camera_id='angle')
+        obs['images']['vis'] = physics.render(height=480, width=640, camera_id='front_close')
 
         return obs
 
@@ -241,9 +244,10 @@ def get_action(master_bot_left, master_bot_right):
     return action
 
 def test_sim_teleop():
+    """ Testing teleoperation in sim with ALOHA. Requires hardware and ALOHA repo to work. """
     from interbotix_xs_modules.arm import InterbotixManipulatorXS
 
-    BOX_POSE[0] = BOX_INIT_POSE
+    BOX_POSE[0] = [0.2, 0.5, 0.05, 1, 0, 0, 0]
 
     # source of data
     master_bot_left = InterbotixManipulatorXS(robot_model="wx250s", group_name="arm", gripper_name="gripper",
@@ -252,12 +256,12 @@ def test_sim_teleop():
                                               robot_name=f'master_right', init_node=False)
 
     # setup the environment
-    env = make_sim_env()
+    env = make_sim_env('sim_transfer_cube')
     ts = env.reset()
     episode = [ts]
     # setup plotting
     ax = plt.subplot()
-    plt_img = ax.imshow(ts.observation['image'])
+    plt_img = ax.imshow(ts.observation['images']['angle'])
     plt.ion()
 
     for t in range(1000):
@@ -265,7 +269,7 @@ def test_sim_teleop():
         ts = env.step(action)
         episode.append(ts)
 
-        plt_img.set_data(ts.observation['image'])
+        plt_img.set_data(ts.observation['images']['angle'])
         plt.pause(0.02)
 
 

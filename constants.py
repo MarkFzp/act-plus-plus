@@ -1,18 +1,41 @@
 import pathlib
 
-### Parameters that changes across tasks
-EPISODE_LEN = 600
+### Task parameters
+DATA_DIR = '<put your data dir here>'
+SIM_TASK_CONFIGS = {
+    'sim_transfer_cube_scripted':{
+        'dataset_dir': DATA_DIR + '/sim_transfer_cube_scripted',
+        'num_episodes': 50,
+        'episode_len': 400,
+        'camera_names': ['top']
+    },
 
-### ALOHA fixed constants
+    'sim_transfer_cube_human':{
+        'dataset_dir': DATA_DIR + '/sim_transfer_cube_human',
+        'num_episodes': 50,
+        'episode_len': 400,
+        'camera_names': ['top']
+    },
+
+    'sim_insertion_scripted': {
+        'dataset_dir': DATA_DIR + '/sim_insertion_scripted',
+        'num_episodes': 50,
+        'episode_len': 400,
+        'camera_names': ['top']
+    },
+
+    'sim_insertion_human': {
+        'dataset_dir': DATA_DIR + '/sim_insertion_human',
+        'num_episodes': 50,
+        'episode_len': 400,
+        'camera_names': ['top']
+    },
+}
+
+### Simulation envs fixed constants
 DT = 0.02
 JOINT_NAMES = ["waist", "shoulder", "elbow", "forearm_roll", "wrist_angle", "wrist_rotate"]
-CAMERA_NAMES = ['cam_high', 'cam_low', 'cam_left_wrist', 'cam_right_wrist'] # defines the number and ordering of cameras
-BOX_INIT_POSE = [0.2, 0.5, 0.05, 1, 0, 0, 0]
 START_ARM_POSE = [0, -0.96, 1.16, 0, -0.3, 0, 0.02239, -0.02239,  0, -0.96, 1.16, 0, -0.3, 0, 0.02239, -0.02239]
-SIM_CAMERA_NAMES = ['main']
-
-SIM_EPISODE_LEN_TRANSFER_CUBE = 400
-SIM_EPISODE_LEN_INSERTION = 400
 
 XML_DIR = str(pathlib.Path(__file__).parent.resolve()) + '/assets/' # note: absolute path
 
