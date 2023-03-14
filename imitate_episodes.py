@@ -88,8 +88,6 @@ def main(args):
         'real_robot': not is_sim
     }
 
-    train_dataloader, val_dataloader, stats, _ = load_data(dataset_dir, num_episodes, camera_names, batch_size_train, batch_size_val)
-
     if is_eval:
         ckpt_names = [f'policy_best.ckpt']
         results = []
@@ -101,6 +99,8 @@ def main(args):
             print(f'{ckpt_name}: {success_rate=} {avg_return=}')
         print()
         exit()
+
+    train_dataloader, val_dataloader, stats, _ = load_data(dataset_dir, num_episodes, camera_names, batch_size_train, batch_size_val)
 
     # save dataset stats
     if not os.path.isdir(ckpt_dir):
