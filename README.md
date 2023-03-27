@@ -1,9 +1,13 @@
 # ACT: Action Chunking with Transformers
 
-### Project Website: https://tonyzhaozh.github.io/aloha/
+#### Project Website: https://tonyzhaozh.github.io/aloha/
 
 This repo contains the implementation of ACT, together with 2 simulated environments:
-Transfer Cube and Bimanual Insertion. You can train and evaluate ACT in sim (tested) or real (ongoing).
+Transfer Cube and Bimanual Insertion. You can train and evaluate ACT in sim or real.
+For real, you would also need to install [ALOHA](https://github.com/tonyzhaozh/aloha).
+
+### Updates:
+Week of Mar 27: We will release our training checkpoints and human dataset later this week.
 
 
 ### Repo Structure
