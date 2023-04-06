@@ -7,7 +7,7 @@ Transfer Cube and Bimanual Insertion. You can train and evaluate ACT in sim or r
 For real, you would also need to install [ALOHA](https://github.com/tonyzhaozh/aloha).
 
 ### Updates:
-Week of Mar 27: We will release our training checkpoints and human dataset later this week.
+You can find all scripted/human demo for simulated environments [here](https://drive.google.com/drive/folders/1gPR03v05S1xiInoVJn7G7VJ9pDCnxq9O?usp=share_link).
 
 
 ### Repo Structure
