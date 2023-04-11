@@ -3,7 +3,7 @@ import os
 import numpy as np
 import argparse
 import matplotlib.pyplot as plt
-import h5py_cache
+import h5py
 
 from constants import PUPPET_GRIPPER_POSITION_NORMALIZE_FN, SIM_TASK_CONFIGS
 from ee_sim_env import make_ee_sim_env
@@ -158,8 +158,7 @@ def main(args):
         # HDF5
         t0 = time.time()
         dataset_path = os.path.join(dataset_dir, f'episode_{episode_idx}')
-        with h5py_cache.File(dataset_path + '.hdf5', 'w', chunk_cache_mem_size=1024 ** 2 * 2) as root:
-        # with h5py.File(dataset_path + '.hdf5', 'w') as root:
+        with h5py.File(dataset_path + '.hdf5', 'w', rdcc_nbytes=1024 ** 2 * 2) as root:
             root.attrs['sim'] = True
             obs = root.create_group('observations')
             image = obs.create_group('images')
