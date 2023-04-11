@@ -39,7 +39,7 @@ You can find all scripted/human demo for simulated environments [here](https://d
     pip install einops
     pip install packaging
     pip install h5py
-    pip install h5py_cache
+    pip install ipython
     cd act/detr && pip install -e .
 
 ### Example Usages
