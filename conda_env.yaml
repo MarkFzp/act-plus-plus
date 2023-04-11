@@ -20,5 +20,4 @@ dependencies:
   - einops=0.6.0
   - packaging=23.0
   - h5py=3.8.0
-  - pip:
-    - h5py_cache==1.0
+  - ipython=8.12.0
