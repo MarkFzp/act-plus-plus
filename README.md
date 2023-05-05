@@ -1,5 +1,7 @@
 # ACT: Action Chunking with Transformers
 
+### *New*: [ACT tuning tips](https://docs.google.com/document/d/1FVIZfoALXg_ZkYKaYVh-qOlaXveq5CtvJHXkY25eYhs/edit?usp=sharing)
+
 #### Project Website: https://tonyzhaozh.github.io/aloha/
 
 This repo contains the implementation of ACT, together with 2 simulated environments:
