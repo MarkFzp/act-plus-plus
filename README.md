@@ -27,7 +27,7 @@ You can find all scripted/human demo for simulated environments [here](https://d
 
 ### Installation
 
-    conda create -n aloha python=3.8
+    conda create -n aloha python=3.8.10
     conda activate aloha
     pip install torchvision
     pip install torch
