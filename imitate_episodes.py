@@ -16,6 +16,8 @@ from utils import compute_dict_mean, set_seed, detach_dict # helper functions
 from policy import ACTPolicy, CNNMLPPolicy
 from visualize_episodes import save_videos
 
+from detr.models.latent_model import Latent_Model_Transformer
+
 from sim_env import BOX_POSE
 
 import IPython
@@ -54,6 +56,8 @@ def main(args):
         enc_layers = 4
         dec_layers = 7
         nheads = 8
+        vq_class = 10
+        vq_dim = 10
         policy_config = {'lr': args['lr'],
                          'num_queries': args['chunk_size'],
                          'kl_weight': args['kl_weight'],
@@ -65,6 +69,9 @@ def main(args):
                          'dec_layers': dec_layers,
                          'nheads': nheads,
                          'camera_names': camera_names,
+                         'vq': args['vq'],
+                         'vq_class': vq_class,
+                         'vq_dim': vq_dim,
                          }
     elif policy_class == 'CNNMLP':
         policy_config = {'lr': args['lr'], 'lr_backbone': lr_backbone, 'backbone' : backbone, 'num_queries': 1,
@@ -161,6 +168,7 @@ def eval_bc(config, ckpt_name, save_episode=True):
     task_name = config['task_name']
     temporal_agg = config['temporal_agg']
     onscreen_cam = 'angle'
+    vq = config['policy_config']['vq']
 
     # load policy and stats
     ckpt_path = os.path.join(ckpt_dir, ckpt_name)
@@ -169,7 +177,16 @@ def eval_bc(config, ckpt_name, save_episode=True):
     print(loading_status)
     policy.cuda()
     policy.eval()
-    print(f'Loaded: {ckpt_path}')
+    if vq:
+        vq_dim = config['policy_config']['vq_dim']
+        vq_class = config['policy_config']['vq_class']
+        latent_model = Latent_Model_Transformer(vq_dim, vq_dim, vq_class)
+        latent_model_ckpt_path = os.path.join(ckpt_dir, 'latent_model_best.ckpt')
+        latent_model.load_state_dict(torch.load(latent_model_ckpt_path))
+        latent_model.cuda()
+        print(f'Loaded policy from: {ckpt_path}, latent model from: {latent_model_ckpt_path}')
+    else:
+        print(f'Loaded: {ckpt_path}')
     stats_path = os.path.join(ckpt_dir, f'dataset_stats.pkl')
     with open(stats_path, 'rb') as f:
         stats = pickle.load(f)
@@ -246,7 +263,11 @@ def eval_bc(config, ckpt_name, save_episode=True):
                 ### query policy
                 if config['policy_class'] == "ACT":
                     if t % query_frequency == 0:
-                        all_actions = policy(qpos, curr_image)
+                        if vq:
+                            vq_sample = latent_model.generate(1, temperature=0.01, x=None)
+                            all_actions = policy(qpos, curr_image, vq_sample=vq_sample)
+                        else:
+                            all_actions = policy(qpos, curr_image)
                     if temporal_agg:
                         all_time_actions[[t], t:t+num_queries] = all_actions
                         actions_for_curr_step = all_time_actions[:, t]
@@ -431,5 +452,6 @@ if __name__ == '__main__':
     parser.add_argument('--hidden_dim', action='store', type=int, help='hidden_dim', required=False)
     parser.add_argument('--dim_feedforward', action='store', type=int, help='dim_feedforward', required=False)
     parser.add_argument('--temporal_agg', action='store_true')
+    parser.add_argument('--vq', action='store_true')
     
     main(vars(parser.parse_args()))

@@ -5,6 +5,7 @@ DETR model and criterion classes.
 import torch
 from torch import nn
 from torch.autograd import Variable
+import torch.nn.functional as F
 from .backbone import build_backbone
 from .transformer import build_transformer, TransformerEncoder, TransformerEncoderLayer
 
@@ -33,7 +34,7 @@ def get_sinusoid_encoding_table(n_position, d_hid):
 
 class DETRVAE(nn.Module):
     """ This is the DETR module that performs object detection """
-    def __init__(self, backbones, transformer, encoder, state_dim, num_queries, camera_names):
+    def __init__(self, backbones, transformer, encoder, state_dim, num_queries, camera_names, vq, vq_class, vq_dim, ):
         """ Initializes the model.
         Parameters:
             backbones: torch module of the backbone to be used. See backbone.py
@@ -48,6 +49,7 @@ class DETRVAE(nn.Module):
         self.camera_names = camera_names
         self.transformer = transformer
         self.encoder = encoder
+        self.vq, self.vq_class, self.vq_dim = vq, vq_class, vq_dim
         hidden_dim = transformer.d_model
         self.action_head = nn.Linear(hidden_dim, state_dim)
         self.is_pad_head = nn.Linear(hidden_dim, 1)
@@ -68,20 +70,24 @@ class DETRVAE(nn.Module):
         self.cls_embed = nn.Embedding(1, hidden_dim) # extra cls token embedding
         self.encoder_action_proj = nn.Linear(14, hidden_dim) # project action to embedding
         self.encoder_joint_proj = nn.Linear(14, hidden_dim)  # project qpos to embedding
-        self.latent_proj = nn.Linear(hidden_dim, self.latent_dim*2) # project hidden state to latent std, var
+
+        print('Use VQ: ', self.vq)
+        if self.vq:
+            self.latent_proj = nn.Linear(hidden_dim, self.vq_class * self.vq_dim)
+        else:
+            self.latent_proj = nn.Linear(hidden_dim, self.latent_dim*2) # project hidden state to latent std, var
         self.register_buffer('pos_table', get_sinusoid_encoding_table(1+1+num_queries, hidden_dim)) # [CLS], qpos, a_seq
 
         # decoder extra parameters
-        self.latent_out_proj = nn.Linear(self.latent_dim, hidden_dim) # project latent sample to embedding
+        if self.vq:
+            self.latent_out_proj = nn.Linear(self.vq_class * self.vq_dim, hidden_dim)
+        else:
+            self.latent_out_proj = nn.Linear(self.latent_dim, hidden_dim) # project latent sample to embedding
         self.additional_pos_embed = nn.Embedding(2, hidden_dim) # learned position embedding for proprio and latent
 
-    def forward(self, qpos, image, env_state, actions=None, is_pad=None):
-        """
-        qpos: batch, qpos_dim
-        image: batch, num_cam, channel, height, width
-        env_state: None
-        actions: batch, seq, action_dim
-        """
+
+    def encode(self, qpos, actions=None, is_pad=None, vq_sample=None):
+        # cvae encoder
         is_training = actions is not None # train or val
         bs, _ = qpos.shape
         ### Obtain latent z from action sequence
@@ -104,15 +110,43 @@ class DETRVAE(nn.Module):
             encoder_output = self.encoder(encoder_input, pos=pos_embed, src_key_padding_mask=is_pad)
             encoder_output = encoder_output[0] # take cls output only
             latent_info = self.latent_proj(encoder_output)
-            mu = latent_info[:, :self.latent_dim]
-            logvar = latent_info[:, self.latent_dim:]
-            latent_sample = reparametrize(mu, logvar)
-            latent_input = self.latent_out_proj(latent_sample)
-        else:
-            mu = logvar = None
-            latent_sample = torch.zeros([bs, self.latent_dim], dtype=torch.float32).to(qpos.device)
-            latent_input = self.latent_out_proj(latent_sample)
+            
+            if self.vq:
+                logits = latent_info.reshape([*latent_info.shape[:-1], self.vq_class, self.vq_dim])
+                probs = torch.softmax(logits, dim=-1)
+                binaries = F.one_hot(torch.multinomial(probs.view(-1, self.vq_dim), 1).squeeze(-1), self.vq_dim).view(-1, self.vq_class, self.vq_dim).float()
+                binaries_flat = binaries.view(-1, self.vq_class * self.vq_dim)
+                probs_flat = probs.view(-1, self.vq_class * self.vq_dim)
+                straigt_through = binaries_flat - probs_flat.detach() + probs_flat
+                latent_input = self.latent_out_proj(straigt_through)
+                mu = logvar = None
+            else:
+                mu = latent_info[:, :self.latent_dim]
+                logvar = latent_info[:, self.latent_dim:]
+                latent_sample = reparametrize(mu, logvar)
+                latent_input = self.latent_out_proj(latent_sample)
 
+        else:
+            mu = logvar = binaries = probs = None
+            if self.vq:
+                latent_input = self.latent_out_proj(vq_sample.view(-1, self.vq_class * self.vq_dim))
+            else:
+                latent_sample = torch.zeros([bs, self.latent_dim], dtype=torch.float32).to(qpos.device)
+                latent_input = self.latent_out_proj(latent_sample)
+
+        
+        return latent_input, probs, binaries, mu, logvar
+
+    def forward(self, qpos, image, env_state, actions=None, is_pad=None, vq_sample=None):
+        """
+        qpos: batch, qpos_dim
+        image: batch, num_cam, channel, height, width
+        env_state: None
+        actions: batch, seq, action_dim
+        """
+        latent_input, probs, binaries, mu, logvar = self.encode(qpos, actions, is_pad, vq_sample)
+
+        # cvae decoder
         if self.backbones is not None:
             # Image observation features and position embeddings
             all_cam_features = []
@@ -136,7 +170,7 @@ class DETRVAE(nn.Module):
             hs = self.transformer(transformer_input, None, self.query_embed.weight, self.pos.weight)[0]
         a_hat = self.action_head(hs)
         is_pad_hat = self.is_pad_head(hs)
-        return a_hat, is_pad_hat, [mu, logvar]
+        return a_hat, is_pad_hat, [mu, logvar], probs, binaries
 
 
 
@@ -247,6 +281,9 @@ def build(args):
         state_dim=state_dim,
         num_queries=args.num_queries,
         camera_names=args.camera_names,
+        vq=args.vq,
+        vq_class=args.vq_class,
+        vq_dim=args.vq_dim,
     )
 
     n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)
