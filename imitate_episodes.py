@@ -56,8 +56,6 @@ def main(args):
         enc_layers = 4
         dec_layers = 7
         nheads = 8
-        vq_class = 10
-        vq_dim = 10
         policy_config = {'lr': args['lr'],
                          'num_queries': args['chunk_size'],
                          'kl_weight': args['kl_weight'],
@@ -69,9 +67,9 @@ def main(args):
                          'dec_layers': dec_layers,
                          'nheads': nheads,
                          'camera_names': camera_names,
-                         'vq': args['vq'],
-                         'vq_class': vq_class,
-                         'vq_dim': vq_dim,
+                         'vq': args['use_vq'],
+                         'vq_class': args['vq_class'],
+                         'vq_dim': args['vq_dim'],
                          }
     elif policy_class == 'CNNMLP':
         policy_config = {'lr': args['lr'], 'lr_backbone': lr_backbone, 'backbone' : backbone, 'num_queries': 1,
@@ -96,7 +94,7 @@ def main(args):
     }
 
     if is_eval:
-        ckpt_names = [f'policy_best.ckpt']
+        ckpt_names = [f'policy_last.ckpt']
         results = []
         for ckpt_name in ckpt_names:
             success_rate, avg_return = eval_bc(config, ckpt_name, save_episode=True)
@@ -181,8 +179,9 @@ def eval_bc(config, ckpt_name, save_episode=True):
         vq_dim = config['policy_config']['vq_dim']
         vq_class = config['policy_config']['vq_class']
         latent_model = Latent_Model_Transformer(vq_dim, vq_dim, vq_class)
-        latent_model_ckpt_path = os.path.join(ckpt_dir, 'latent_model_best.ckpt')
+        latent_model_ckpt_path = os.path.join(ckpt_dir, 'latent_model_last.ckpt')
         latent_model.load_state_dict(torch.load(latent_model_ckpt_path))
+        latent_model.eval()
         latent_model.cuda()
         print(f'Loaded policy from: {ckpt_path}, latent model from: {latent_model_ckpt_path}')
     else:
@@ -264,7 +263,11 @@ def eval_bc(config, ckpt_name, save_episode=True):
                 if config['policy_class'] == "ACT":
                     if t % query_frequency == 0:
                         if vq:
-                            vq_sample = latent_model.generate(1, temperature=0.01, x=None)
+                            if rollout_id == 0:
+                                for _ in range(10):
+                                    vq_sample = latent_model.generate(1, temperature=1, x=None)
+                                    print(torch.nonzero(vq_sample[0])[:, 1].cpu().numpy())
+                            vq_sample = latent_model.generate(1, temperature=1, x=None)
                             all_actions = policy(qpos, curr_image, vq_sample=vq_sample)
                         else:
                             all_actions = policy(qpos, curr_image)
@@ -452,6 +455,8 @@ if __name__ == '__main__':
     parser.add_argument('--hidden_dim', action='store', type=int, help='hidden_dim', required=False)
     parser.add_argument('--dim_feedforward', action='store', type=int, help='dim_feedforward', required=False)
     parser.add_argument('--temporal_agg', action='store_true')
-    parser.add_argument('--vq', action='store_true')
+    parser.add_argument('--use_vq', action='store_true')
+    parser.add_argument('--vq_class', action='store', type=int, help='vq_class')
+    parser.add_argument('--vq_dim', action='store', type=int, help='vq_dim')
     
     main(vars(parser.parse_args()))

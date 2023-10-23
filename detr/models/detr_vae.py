@@ -71,7 +71,7 @@ class DETRVAE(nn.Module):
         self.encoder_action_proj = nn.Linear(14, hidden_dim) # project action to embedding
         self.encoder_joint_proj = nn.Linear(14, hidden_dim)  # project qpos to embedding
 
-        print('Use VQ: ', self.vq)
+        print(f'Use VQ: {self.vq}, {self.vq_class}, {self.vq_dim}')
         if self.vq:
             self.latent_proj = nn.Linear(hidden_dim, self.vq_class * self.vq_dim)
         else:
@@ -121,6 +121,7 @@ class DETRVAE(nn.Module):
                 latent_input = self.latent_out_proj(straigt_through)
                 mu = logvar = None
             else:
+                probs = binaries = None
                 mu = latent_info[:, :self.latent_dim]
                 logvar = latent_info[:, self.latent_dim:]
                 latent_sample = reparametrize(mu, logvar)

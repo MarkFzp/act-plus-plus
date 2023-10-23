@@ -56,8 +56,6 @@ def main(args):
         enc_layers = 4
         dec_layers = 7
         nheads = 8
-        vq_class = 10
-        vq_dim = 10
         policy_config = {'lr': args['lr'],
                          'num_queries': args['chunk_size'],
                          'kl_weight': args['kl_weight'],
@@ -70,8 +68,8 @@ def main(args):
                          'nheads': nheads,
                          'camera_names': camera_names,
                          'vq': True,
-                         'vq_class': vq_class,
-                         'vq_dim': vq_dim,
+                         'vq_class': args['vq_class'],
+                         'vq_dim': args['vq_dim'],
                          }
     elif policy_class == 'CNNMLP':
         policy_config = {'lr': args['lr'], 'lr_backbone': lr_backbone, 'backbone' : backbone, 'num_queries': 1,
@@ -116,7 +114,7 @@ def main(args):
     # with open(stats_path, 'wb') as f:
     #     pickle.dump(stats, f)
 
-    ckpt_name = f'policy_best.ckpt'
+    ckpt_name = f'policy_last.ckpt'
     best_ckpt_info = train_bc(train_dataloader, val_dataloader, config, ckpt_name)
     best_epoch, min_val_loss, best_state_dict = best_ckpt_info
 
@@ -464,5 +462,8 @@ if __name__ == '__main__':
     parser.add_argument('--hidden_dim', action='store', type=int, help='hidden_dim', required=False)
     parser.add_argument('--dim_feedforward', action='store', type=int, help='dim_feedforward', required=False)
     parser.add_argument('--temporal_agg', action='store_true')
+    parser.add_argument('--use_vq', action='store_true')
+    parser.add_argument('--vq_class', action='store', type=int, help='vq_class')
+    parser.add_argument('--vq_dim', action='store', type=int, help='vq_dim')
     
     main(vars(parser.parse_args()))

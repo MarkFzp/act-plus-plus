@@ -27,11 +27,10 @@ class ACTPolicy(nn.Module):
             is_pad = is_pad[:, :self.model.num_queries]
 
             loss_dict = dict()
-            print(vq_sample)
             a_hat, is_pad_hat, (mu, logvar), probs, binaries = self.model(qpos, image, env_state, actions, is_pad, vq_sample)
             if self.vq:
                 total_kld = [torch.tensor(0.0)]
-                loss_dict['vq_loss'] = F.l1_loss(binaries, probs, reduction='mean')
+                loss_dict['vq_discrepancy'] = F.l1_loss(probs, binaries, reduction='mean')
             else:
                 total_kld, dim_wise_kld, mean_kld = kl_divergence(mu, logvar)
             all_l1 = F.l1_loss(actions, a_hat, reduction='none')
