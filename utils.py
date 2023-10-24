@@ -27,7 +27,11 @@ class EpisodicDataset(torch.utils.data.Dataset):
         dataset_path = os.path.join(self.dataset_dir, f'episode_{episode_id}.hdf5')
         with h5py.File(dataset_path, 'r') as root:
             is_sim = root.attrs['sim']
-            original_action_shape = root['/action'].shape
+            if '/base_action' in root:
+                action = np.concatenate([root['/action'][()], root['/base_action'][()]], axis=-1)
+            else:
+                action = root['/action'][()]
+            original_action_shape = action.shape
             episode_len = original_action_shape[0]
             if sample_full_episode:
                 start_ts = 0
@@ -41,10 +45,10 @@ class EpisodicDataset(torch.utils.data.Dataset):
                 image_dict[cam_name] = root[f'/observations/images/{cam_name}'][start_ts]
             # get all actions after and including start_ts
             if is_sim:
-                action = root['/action'][start_ts:]
+                action = action[start_ts:]
                 action_len = episode_len - start_ts
             else:
-                action = root['/action'][max(0, start_ts - 1):] # hack, to make timesteps more aligned
+                action = action[max(0, start_ts - 1):] # hack, to make timesteps more aligned
                 action_len = episode_len - max(0, start_ts - 1) # hack, to make timesteps more aligned
 
         self.is_sim = is_sim
@@ -85,7 +89,7 @@ def get_norm_stats(dataset_dir, num_episodes):
             with h5py.File(dataset_path, 'r') as root:
                 qpos = root['/observations/qpos'][()]
                 qvel = root['/observations/qvel'][()]
-                action = root['/action'][()]
+                action = np.concatenate([root['/action'][()], root['/base_action'][()]], axis=-1)
         except:
             print(f'Error loading {dataset_path}')
             quit()

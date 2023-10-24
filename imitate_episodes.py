@@ -70,6 +70,7 @@ def main(args):
                          'vq': args['use_vq'],
                          'vq_class': args['vq_class'],
                          'vq_dim': args['vq_dim'],
+                         'action_dim': 16
                          }
     elif policy_class == 'CNNMLP':
         policy_config = {'lr': args['lr'], 'lr_backbone': lr_backbone, 'backbone' : backbone, 'num_queries': 1,
@@ -197,7 +198,7 @@ def eval_bc(config, ckpt_name, save_episode=True):
     if real_robot:
         from aloha_scripts.robot_utils import move_grippers # requires aloha
         from aloha_scripts.real_env import make_real_env # requires aloha
-        env = make_real_env(init_node=True)
+        env = make_real_env(init_node=True, setup_base=True)
         env_max_reward = 0
     else:
         from sim_env import make_sim_env
@@ -291,10 +292,11 @@ def eval_bc(config, ckpt_name, save_episode=True):
                 ### post-process actions
                 raw_action = raw_action.squeeze(0).cpu().numpy()
                 action = post_process(raw_action)
-                target_qpos = action
+                target_qpos = action[:-2]
+                base_action = action[-2:]
 
                 ### step the environment
-                ts = env.step(target_qpos)
+                ts = env.step(target_qpos, base_action)
 
                 ### for visualization
                 qpos_list.append(qpos_numpy)
