@@ -29,10 +29,8 @@ class EpisodicDataset(torch.utils.data.Dataset):
             is_sim = root.attrs['sim']
             if '/base_action' in root:
                 base_action = root['/base_action'][()]
-                smoothed_base_action = np.stack([
-                    np.convolve(base_action[:, i], np.ones(20)/20, mode='same') for i in range(base_action.shape[1])
-                ], axis=-1, dtype=np.float32)
-                action = np.concatenate([root['/action'][()], smoothed_base_action], axis=-1)
+                base_action = preprocess_base_action(base_action)
+                action = np.concatenate([root['/action'][()], base_action], axis=-1)
             else:
                 action = root['/action'][()]
             original_action_shape = action.shape
@@ -94,10 +92,8 @@ def get_norm_stats(dataset_dir, num_episodes):
                 qpos = root['/observations/qpos'][()]
                 qvel = root['/observations/qvel'][()]
                 base_action = root['/base_action'][()]
-                smoothed_base_action = np.stack([
-                    np.convolve(base_action[:, i], np.ones(20)/20, mode='same') for i in range(base_action.shape[1])
-                ], axis=-1, dtype=np.float32)
-                action = np.concatenate([root['/action'][()], smoothed_base_action], axis=-1)
+                base_action = preprocess_base_action(base_action)
+                action = np.concatenate([root['/action'][()], base_action], axis=-1)
         except:
             print(f'Error loading {dataset_path}')
             quit()
@@ -138,11 +134,28 @@ def load_data(dataset_dir, num_episodes, camera_names, batch_size_train, batch_s
     # construct dataset and dataloader
     train_dataset = EpisodicDataset(train_indices, dataset_dir, camera_names, norm_stats)
     val_dataset = EpisodicDataset(val_indices, dataset_dir, camera_names, norm_stats)
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True, pin_memory=True, num_workers=1, prefetch_factor=1)
-    val_dataloader = DataLoader(val_dataset, batch_size=batch_size_val, shuffle=True, pin_memory=True, num_workers=1, prefetch_factor=1)
+    train_dataloader = DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True, pin_memory=True, num_workers=1, prefetch_factor=1, persistent_workers=True)
+    val_dataloader = DataLoader(val_dataset, batch_size=batch_size_val, shuffle=True, pin_memory=True, num_workers=1, prefetch_factor=1, persistent_workers=True)
 
     return train_dataloader, val_dataloader, norm_stats, train_dataset.is_sim
 
+def calibrate_linear_vel(base_action):
+    c = 0.19
+    v = base_action[:, 0]
+    w = base_action[:, 1]
+    base_action[:, 0] = v - c * w
+    return base_action
+
+def smooth_base_action(base_action):
+    return np.stack([
+        np.convolve(base_action[:, i], np.ones(20)/20, mode='same') for i in range(base_action.shape[1])
+    ], axis=-1, dtype=np.float32)
+
+def preprocess_base_action(base_action):
+    base_action = calibrate_linear_vel(base_action)
+    base_action = smooth_base_action(base_action)
+
+    return base_action
 
 ### env utils
 
