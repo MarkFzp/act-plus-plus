@@ -28,7 +28,11 @@ class EpisodicDataset(torch.utils.data.Dataset):
         with h5py.File(dataset_path, 'r') as root:
             is_sim = root.attrs['sim']
             if '/base_action' in root:
-                action = np.concatenate([root['/action'][()], root['/base_action'][()]], axis=-1)
+                base_action = root['/base_action'][()]
+                smoothed_base_action = np.stack([
+                    np.convolve(base_action[:, i], np.ones(20)/20, mode='same') for i in range(base_action.shape[1])
+                ], axis=-1, dtype=np.float32)
+                action = np.concatenate([root['/action'][()], smoothed_base_action], axis=-1)
             else:
                 action = root['/action'][()]
             original_action_shape = action.shape
@@ -89,7 +93,11 @@ def get_norm_stats(dataset_dir, num_episodes):
             with h5py.File(dataset_path, 'r') as root:
                 qpos = root['/observations/qpos'][()]
                 qvel = root['/observations/qvel'][()]
-                action = np.concatenate([root['/action'][()], root['/base_action'][()]], axis=-1)
+                base_action = root['/base_action'][()]
+                smoothed_base_action = np.stack([
+                    np.convolve(base_action[:, i], np.ones(20)/20, mode='same') for i in range(base_action.shape[1])
+                ], axis=-1, dtype=np.float32)
+                action = np.concatenate([root['/action'][()], smoothed_base_action], axis=-1)
         except:
             print(f'Error loading {dataset_path}')
             quit()
