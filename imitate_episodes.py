@@ -12,7 +12,7 @@ from constants import DT
 from constants import PUPPET_GRIPPER_JOINT_OPEN
 from utils import load_data # data functions
 from utils import sample_box_pose, sample_insertion_pose # robot functions
-from utils import compute_dict_mean, set_seed, detach_dict # helper functions
+from utils import compute_dict_mean, set_seed, detach_dict, calibrate_linear_vel # helper functions
 from policy import ACTPolicy, CNNMLPPolicy
 from visualize_episodes import save_videos
 
@@ -295,6 +295,7 @@ def eval_bc(config, ckpt_name, save_episode=True):
                 action = post_process(raw_action)
                 target_qpos = action[:-2]
                 base_action = action[-2:]
+                base_action = calibrate_linear_vel(base_action, c=0)
 
                 ### step the environment
                 ts = env.step(target_qpos, base_action)

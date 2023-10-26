@@ -139,11 +139,13 @@ def load_data(dataset_dir, num_episodes, camera_names, batch_size_train, batch_s
 
     return train_dataloader, val_dataloader, norm_stats, train_dataset.is_sim
 
-def calibrate_linear_vel(base_action):
-    c = 0.19
-    v = base_action[:, 0]
-    w = base_action[:, 1]
-    base_action[:, 0] = v - c * w
+def calibrate_linear_vel(base_action, c=None):
+    if c is None:
+        c = 0.19
+    v = base_action[..., 0]
+    w = base_action[..., 1]
+    base_action[..., 0] = v - c * w
+    print(f'c: {c}, v: {v}, w: {w}')
     return base_action
 
 def smooth_base_action(base_action):
@@ -152,7 +154,7 @@ def smooth_base_action(base_action):
     ], axis=-1, dtype=np.float32)
 
 def preprocess_base_action(base_action):
-    base_action = calibrate_linear_vel(base_action)
+    # base_action = calibrate_linear_vel(base_action)
     base_action = smooth_base_action(base_action)
 
     return base_action
