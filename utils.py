@@ -143,6 +143,7 @@ def calibrate_linear_vel(base_action):
     c = 0.19
     v = base_action[:, 0]
     w = base_action[:, 1]
+    base_action = base_action.copy()
     base_action[:, 0] = v - c * w
     return base_action
 
