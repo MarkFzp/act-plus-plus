@@ -198,7 +198,7 @@ def eval_bc(config, ckpt_name, save_episode=True):
     if real_robot:
         from aloha_scripts.robot_utils import move_grippers # requires aloha
         from aloha_scripts.real_env import make_real_env # requires aloha
-        env = make_real_env(init_node=True, setup_base=True)
+        env = make_real_env(init_node=True, setup_robots=True, setup_base=True)
         env_max_reward = 0
     else:
         from sim_env import make_sim_env
@@ -212,7 +212,7 @@ def eval_bc(config, ckpt_name, save_episode=True):
 
     max_timesteps = int(max_timesteps * 1) # may increase for real-world tasks
 
-    num_rollouts = 50
+    num_rollouts = 1
     episode_returns = []
     highest_rewards = []
     for rollout_id in range(num_rollouts):
@@ -233,7 +233,7 @@ def eval_bc(config, ckpt_name, save_episode=True):
 
         ### evaluation loop
         if temporal_agg:
-            all_time_actions = torch.zeros([max_timesteps, max_timesteps+num_queries, state_dim]).cuda()
+            all_time_actions = torch.zeros([max_timesteps, max_timesteps+num_queries, 16]).cuda()
 
         qpos_history = torch.zeros((1, max_timesteps, state_dim)).cuda()
         image_list = [] # for visualization
@@ -271,6 +271,7 @@ def eval_bc(config, ckpt_name, save_episode=True):
                             vq_sample = latent_model.generate(1, temperature=1, x=None)
                             all_actions = policy(qpos, curr_image, vq_sample=vq_sample)
                         else:
+                            # e()
                             all_actions = policy(qpos, curr_image)
                     if temporal_agg:
                         all_time_actions[[t], t:t+num_queries] = all_actions
