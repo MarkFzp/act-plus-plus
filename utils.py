@@ -123,7 +123,7 @@ def get_norm_stats(dataset_dir, num_episodes):
 def load_data(dataset_dir, num_episodes, camera_names, batch_size_train, batch_size_val):
     print(f'\nData from: {dataset_dir}\n')
     # obtain train test split
-    train_ratio = 0.8
+    train_ratio = 0.99
     shuffled_indices = np.random.permutation(num_episodes)
     train_indices = shuffled_indices[:int(train_ratio * num_episodes)]
     val_indices = shuffled_indices[int(train_ratio * num_episodes):]
@@ -151,11 +151,11 @@ def calibrate_linear_vel(base_action, c=None):
 def smooth_base_action(base_action):
     return np.stack([
         np.convolve(base_action[:, i], np.ones(20)/20, mode='same') for i in range(base_action.shape[1])
-    ], axis=-1, dtype=np.float32)
+    ], axis=-1)
 
 def preprocess_base_action(base_action):
     # base_action = calibrate_linear_vel(base_action)
-    base_action = smooth_base_action(base_action)
+    base_action = smooth_base_action(base_action).astype(np.float32)
 
     return base_action
 
