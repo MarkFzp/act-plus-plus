@@ -1,0 +1,30 @@
+
+conda activate mimic
+export MUJOCO_GL=egl
+cd /home/tonyzhao/Research/act-plus-plus
+python3 imitate_episodes.py \
+--task_name sim_transfer_cube_human \
+--ckpt_dir /scr/tonyzhao/train_logs/vq_test \
+--policy_class ACT --kl_weight 10 --chunk_size 100 \
+--hidden_dim 512 --batch_size 8 --dim_feedforward 3200 \
+--num_epochs 10000 --lr 1e-5 --seed 0 --vq
+
+conda activate mobile
+cd /home/tonyzhao/Research/act-plus-plus
+CUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \
+--task_name all \
+--ckpt_dir /scr/tonyzhao/train_logs/pretrain_all \
+--policy_class ACT --kl_weight 10 --chunk_size 50 \
+--hidden_dim 512 --batch_size 24 --dim_feedforward 3200 --num_epochs 5000 --lr 1e-4 --seed 0
+
+
+conda activate mobile
+cd /home/tonyzhao/Research/act-plus-plus
+CUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \
+--task_name all \
+--ckpt_dir /scr/tonyzhao/train_logs/pretrain_all \
+--policy_class ACT --kl_weight 10 --chunk_size 50 \
+--hidden_dim 512 --batch_size 24 --dim_feedforward 3200 --lr 1e-4 --seed 0 \
+--num_steps 1000000 --eval_every 10000000000 --validate_every 2000 --save_every 5000
+
+
