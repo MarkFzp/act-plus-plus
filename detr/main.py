@@ -67,6 +67,7 @@ def get_args_parser():
     parser.add_argument('--use_vq', action='store_true')
     parser.add_argument('--vq_class', action='store', type=int, help='vq_class', required=False)
     parser.add_argument('--vq_dim', action='store', type=int, help='vq_dim', required=False)
+    parser.add_argument('--load_pretrain', action='store_true', default=False)
     parser.add_argument('--action_dim', action='store', type=int, required=False)
 
     return parser

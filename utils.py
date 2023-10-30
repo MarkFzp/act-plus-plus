@@ -2,6 +2,7 @@ import numpy as np
 import torch
 import os
 import h5py
+import pickle
 from torch.utils.data import TensorDataset, DataLoader
 
 import IPython
@@ -120,7 +121,7 @@ def get_norm_stats(dataset_dir, num_episodes):
     return stats
 
 
-def load_data(dataset_dir, num_episodes, camera_names, batch_size_train, batch_size_val):
+def load_data(dataset_dir, num_episodes, camera_names, batch_size_train, batch_size_val, load_pretrain=False):
     print(f'\nData from: {dataset_dir}\n')
     # obtain train test split
     train_ratio = 0.99
@@ -129,7 +130,12 @@ def load_data(dataset_dir, num_episodes, camera_names, batch_size_train, batch_s
     val_indices = shuffled_indices[int(train_ratio * num_episodes):]
 
     # obtain normalization stats for qpos and action
-    norm_stats = get_norm_stats(dataset_dir, num_episodes)
+    if load_pretrain:
+        with open(os.path.join('/home/zfu/interbotix_ws/src/act/ckpts/pretrain_all', 'dataset_stats.pkl'), 'rb') as f:
+            norm_stats = pickle.load(f)
+        print('Loaded pretrain dataset stats')
+    else:
+        norm_stats = get_norm_stats(dataset_dir, num_episodes)
 
     # construct dataset and dataloader
     train_dataset = EpisodicDataset(train_indices, dataset_dir, camera_names, norm_stats)

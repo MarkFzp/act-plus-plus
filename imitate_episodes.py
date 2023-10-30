@@ -91,7 +91,8 @@ def main(args):
         'seed': args['seed'],
         'temporal_agg': args['temporal_agg'],
         'camera_names': camera_names,
-        'real_robot': not is_sim
+        'real_robot': not is_sim,
+        'load_pretrain': args['load_pretrain']
     }
 
     if is_eval:
@@ -106,7 +107,7 @@ def main(args):
         print()
         exit()
 
-    train_dataloader, val_dataloader, stats, _ = load_data(dataset_dir, num_episodes, camera_names, batch_size_train, batch_size_val)
+    train_dataloader, val_dataloader, stats, _ = load_data(dataset_dir, num_episodes, camera_names, batch_size_train, batch_size_val, load_pretrain=config['load_pretrain'])
 
     # save dataset stats
     if not os.path.isdir(ckpt_dir):
@@ -357,6 +358,9 @@ def train_bc(train_dataloader, val_dataloader, config):
     set_seed(seed)
 
     policy = make_policy(policy_class, policy_config)
+    if config['load_pretrain']:
+        loading_status = policy.load_state_dict(torch.load(os.path.join('/home/zfu/interbotix_ws/src/act/ckpts/pretrain_all', 'policy_step_50000_seed_0.ckpt')))
+        print(f'loaded! {loading_status}')
     policy.cuda()
     optimizer = make_optimizer(policy_class, policy)
 
@@ -452,6 +456,7 @@ if __name__ == '__main__':
     parser.add_argument('--seed', action='store', type=int, help='seed', required=True)
     parser.add_argument('--num_epochs', action='store', type=int, help='num_epochs', required=True)
     parser.add_argument('--lr', action='store', type=float, help='lr', required=True)
+    parser.add_argument('--load_pretrain', action='store_true', default=False)
 
     # for ACT
     parser.add_argument('--kl_weight', action='store', type=int, help='KL Weight', required=False)
