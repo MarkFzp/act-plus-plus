@@ -38,7 +38,10 @@ class EpisodicDataset(torch.utils.data.Dataset):
         try:
             # print(dataset_path)
             with h5py.File(dataset_path, 'r') as root:
-                is_sim = root.attrs['sim']
+                try: # some legacy data does not have this attribute
+                    is_sim = root.attrs['sim']
+                except:
+                    is_sim = False
                 if '/base_action' in root:
                     base_action = root['/base_action'][()]
                     base_action = preprocess_base_action(base_action)
@@ -93,7 +96,7 @@ class EpisodicDataset(torch.utils.data.Dataset):
             qpos_data = (qpos_data - self.norm_stats["qpos_mean"]) / self.norm_stats["qpos_std"]
 
         except:
-            print(f'Error loading {dataset_path}')
+            print(f'Error loading {dataset_path} in __getitem__')
             quit()
 
         # print(image_data.dtype, qpos_data.dtype, action_data.dtype, is_pad.dtype)
@@ -119,7 +122,7 @@ def get_norm_stats(dataset_path_list):
                     dummy_base_action = np.zeros([action.shape[0], 2])
                     action = np.concatenate([action, dummy_base_action], axis=-1)
         except:
-            print(f'Error loading {dataset_path}')
+            print(f'Error loading {dataset_path} in get_norm_stats')
             quit()
         all_qpos_data.append(torch.from_numpy(qpos))
         all_action_data.append(torch.from_numpy(action))
@@ -151,14 +154,13 @@ def find_all_hdf5(dataset_dir):
     return hdf5_files
 
 
-def load_data(dataset_dir, num_episodes, camera_names, batch_size_train, batch_size_val, chunk_size):
-    del num_episodes
+def load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, chunk_size):
     dataset_path_list = find_all_hdf5(dataset_dir)
-    # dataset_path_list = [p for p in dataset_path_list if 'sim' not in p] ### TODO filter out sim data
+    dataset_path_list = [n for n in dataset_path_list if name_filter(n)]
     num_episodes = len(dataset_path_list)
 
     # obtain train test split
-    train_ratio = 0.95
+    train_ratio = 0.995
     shuffled_episode_ids = np.random.permutation(num_episodes)
     train_episode_ids = shuffled_episode_ids[:int(train_ratio * num_episodes)]
     val_episode_ids = shuffled_episode_ids[int(train_ratio * num_episodes):]

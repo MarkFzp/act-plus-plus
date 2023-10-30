@@ -34,6 +34,7 @@ SIM_TASK_CONFIGS = {
         'dataset_dir': DATA_DIR + '/',
         'num_episodes': None,
         'episode_len': None,
+        'name_filter': lambda n: 'sim' not in n,
         'camera_names': ['cam_high', 'cam_left_wrist', 'cam_right_wrist']
     },
 
