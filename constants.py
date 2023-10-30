@@ -7,7 +7,7 @@ SIM_TASK_CONFIGS = {
         'dataset_dir': DATA_DIR + '/sim_transfer_cube_scripted',
         'num_episodes': 50,
         'episode_len': 400,
-        'camera_names': ['top']
+        'camera_names': ['top', 'left_wrist', 'right_wrist']
     },
 
     'sim_transfer_cube_human':{
@@ -36,6 +36,14 @@ SIM_TASK_CONFIGS = {
         'episode_len': None,
         'camera_names': ['cam_high', 'cam_left_wrist', 'cam_right_wrist']
     },
+
+    'sim_transfer_cube_scripted_mirror':{
+        'dataset_dir': DATA_DIR + '/sim_transfer_cube_scripted_mirror',
+        'num_episodes': 50,
+        'episode_len': 400,
+        'camera_names': ['top', 'left_wrist', 'right_wrist']
+    },
+
 }
 
 ### Simulation envs fixed constants

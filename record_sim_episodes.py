@@ -28,7 +28,7 @@ def main(args):
     num_episodes = args['num_episodes']
     onscreen_render = args['onscreen_render']
     inject_noise = False
-    render_cam_name = 'angle'
+    render_cam_name = 'top'
 
     if not os.path.isdir(dataset_dir):
         os.makedirs(dataset_dir, exist_ok=True)
@@ -39,6 +39,8 @@ def main(args):
         policy_cls = PickAndTransferPolicy
     elif task_name == 'sim_insertion_scripted':
         policy_cls = InsertionPolicy
+    elif task_name == 'sim_transfer_cube_scripted_mirror':
+        policy_cls = PickAndTransferPolicy
     else:
         raise NotImplementedError
 

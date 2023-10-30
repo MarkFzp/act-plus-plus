@@ -38,7 +38,7 @@ class EpisodicDataset(torch.utils.data.Dataset):
         try:
             # print(dataset_path)
             with h5py.File(dataset_path, 'r') as root:
-                is_sim = False # root.attrs['sim']
+                is_sim = root.attrs['sim']
                 if '/base_action' in root:
                     base_action = root['/base_action'][()]
                     base_action = preprocess_base_action(base_action)

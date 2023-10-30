@@ -105,7 +105,8 @@ def main(args):
     if not os.path.isdir(ckpt_dir):
         os.makedirs(ckpt_dir)
     config_path = os.path.join(ckpt_dir, 'config.pkl')
-    wandb.init(project="mobile-aloha", reinit=True, entity="tonyzhao")
+    expr_name = ckpt_dir.split('/')[-1]
+    wandb.init(project="mobile-aloha", reinit=True, entity="tonyzhao", name=expr_name)
     wandb.config.update(config)
     with open(config_path, 'wb') as f:
         pickle.dump(config, f)
@@ -113,7 +114,7 @@ def main(args):
         ckpt_names = [f'policy_last.ckpt']
         results = []
         for ckpt_name in ckpt_names:
-            success_rate, avg_return = eval_bc(config, ckpt_name, save_episode=True)
+            success_rate, avg_return = eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50)
             wandb.log({'success_rate': success_rate, 'avg_return': avg_return})
             results.append([ckpt_name, success_rate, avg_return])
 
@@ -169,7 +170,7 @@ def get_image(ts, camera_names):
     return curr_image
 
 
-def eval_bc(config, ckpt_name, save_episode=True):
+def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
     set_seed(1000)
     ckpt_dir = config['ckpt_dir']
     state_dim = config['state_dim']
@@ -227,7 +228,6 @@ def eval_bc(config, ckpt_name, save_episode=True):
 
     max_timesteps = int(max_timesteps * 1) # may increase for real-world tasks
 
-    num_rollouts = 50
     episode_returns = []
     highest_rewards = []
     for rollout_id in range(num_rollouts):
@@ -311,7 +311,10 @@ def eval_bc(config, ckpt_name, save_episode=True):
                 base_action = action[-2:]
 
                 ### step the environment
-                ts = env.step(target_qpos, base_action)
+                if real_robot:
+                    ts = env.step(target_qpos, base_action)
+                else:
+                    ts = env.step(target_qpos)
 
                 ### for visualization
                 qpos_list.append(qpos_numpy)
@@ -409,10 +412,12 @@ def train_bc(train_dataloader, val_dataloader, config):
                 
         # evaluation
         if (step > 0) and (step % eval_every == 0):
-            state_dict = deepcopy(policy.state_dict())
-            success_with_te, _ = eval_bc(config, f'TE_step{step}', state_dict, temporal_agg=True, save_episode=True, num_rollouts=5)
-            success_without_te, _ = eval_bc(config, f'step{step}', state_dict, temporal_agg=False, save_episode=True, num_rollouts=5)
-            wandb.log({'success_with_te':success_with_te, 'success_without_te':success_without_te}, step=step)
+            # first save then eval
+            ckpt_name = f'policy_step_{step}_seed_{seed}.ckpt'
+            ckpt_path = os.path.join(ckpt_dir, ckpt_name)
+            torch.save(policy.state_dict(), ckpt_path)
+            success, _ = eval_bc(config, ckpt_name, save_episode=True, num_rollouts=10)
+            wandb.log({'success': success}, step=step)
 
         # training
         policy.train()
