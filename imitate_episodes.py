@@ -107,7 +107,7 @@ def main(args):
         os.makedirs(ckpt_dir)
     config_path = os.path.join(ckpt_dir, 'config.pkl')
     expr_name = ckpt_dir.split('/')[-1]
-    wandb.init(project="mobile-aloha", reinit=True, entity="tonyzhao", name=expr_name)
+    wandb.init(project="mobile-aloha", reinit=True, entity="mobile-aloha", name=expr_name)
     wandb.config.update(config)
     with open(config_path, 'wb') as f:
         pickle.dump(config, f)
