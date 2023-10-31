@@ -77,7 +77,8 @@ def main(args):
                          'vq': args['use_vq'],
                          'vq_class': args['vq_class'],
                          'vq_dim': args['vq_dim'],
-                         'action_dim': 16
+                         'action_dim': 16,
+                         'no_encoder': args['no_encoder'],
                          }
     elif policy_class == 'CNNMLP':
         policy_config = {'lr': args['lr'], 'lr_backbone': lr_backbone, 'backbone' : backbone, 'num_queries': 1,
@@ -422,7 +423,7 @@ def train_bc(train_dataloader, val_dataloader, config):
             ckpt_name = f'policy_step_{step}_seed_{seed}.ckpt'
             ckpt_path = os.path.join(ckpt_dir, ckpt_name)
             torch.save(policy.state_dict(), ckpt_path)
-            success, _ = eval_bc(config, ckpt_name, save_episode=True, num_rollouts=10)
+            success, _ = eval_bc(config, ckpt_name, save_episode=True, num_rollouts=20)
             wandb.log({'success': success}, step=step)
 
         # training
@@ -484,5 +485,6 @@ if __name__ == '__main__':
     parser.add_argument('--use_vq', action='store_true')
     parser.add_argument('--vq_class', action='store', type=int, help='vq_class')
     parser.add_argument('--vq_dim', action='store', type=int, help='vq_dim')
+    parser.add_argument('--no_encoder', action='store_true')
     
     main(vars(parser.parse_args()))

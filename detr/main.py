@@ -72,6 +72,7 @@ def get_args_parser():
     parser.add_argument('--validate_every', action='store', type=int, default=500, help='validate_every', required=False)
     parser.add_argument('--save_every', action='store', type=int, default=500, help='save_every', required=False)
     parser.add_argument('--resume_ckpt_path', action='store', type=str, help='load_ckpt_path', required=False)
+    parser.add_argument('--no_encoder', action='store_true')
 
     return parser
 
