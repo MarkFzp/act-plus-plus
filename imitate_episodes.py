@@ -39,6 +39,7 @@ def main(args):
     eval_every = args['eval_every']
     validate_every = args['validate_every']
     save_every = args['save_every']
+    resume_ckpt_path = args['resume_ckpt_path']
 
     # get task parameters
     is_sim = task_name[:4] == 'sim_'
@@ -90,6 +91,7 @@ def main(args):
         'validate_every': validate_every,
         'save_every': save_every,
         'ckpt_dir': ckpt_dir,
+        'resume_ckpt_path': resume_ckpt_path,
         'episode_len': episode_len,
         'state_dim': state_dim,
         'lr': args['lr'],
@@ -107,7 +109,7 @@ def main(args):
         os.makedirs(ckpt_dir)
     config_path = os.path.join(ckpt_dir, 'config.pkl')
     expr_name = ckpt_dir.split('/')[-1]
-    wandb.init(project="mobile-aloha", reinit=True, entity="tonyzhao", name=expr_name)
+    wandb.init(project="mobile-aloha", reinit=True, entity="mobile-aloha", name=expr_name)
     wandb.config.update(config)
     with open(config_path, 'wb') as f:
         pickle.dump(config, f)
@@ -377,6 +379,9 @@ def train_bc(train_dataloader, val_dataloader, config):
     set_seed(seed)
 
     policy = make_policy(policy_class, policy_config)
+    if config['resume_ckpt_path'] is not None:
+        loading_status = policy.load_state_dict(torch.load(config['resume_ckpt_path']))
+        print(f'Resume policy from: {config["resume_ckpt_path"]}, Status: {loading_status}')
     policy.cuda()
     optimizer = make_optimizer(policy_class, policy)
 
@@ -468,6 +473,7 @@ if __name__ == '__main__':
     parser.add_argument('--eval_every', action='store', type=int, default=500, help='eval_every', required=False)
     parser.add_argument('--validate_every', action='store', type=int, default=500, help='validate_every', required=False)
     parser.add_argument('--save_every', action='store', type=int, default=500, help='save_every', required=False)
+    parser.add_argument('--resume_ckpt_path', action='store', type=str, help='resume_ckpt_path', required=False)
 
     # for ACT
     parser.add_argument('--kl_weight', action='store', type=int, help='KL Weight', required=False)
