@@ -70,7 +70,7 @@ CUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \
 --ckpt_dir /scr/tonyzhao/train_logs/cube_scripted_mirror \
 --policy_class ACT --kl_weight 10 --chunk_size 50 \
 --hidden_dim 512 --batch_size 12 --dim_feedforward 3200 --lr 1e-5 --seed 0 \
---num_steps 50000 --eval_every 2000 --validate_every 2000 --save_every 2000
+--num_steps 100000 --eval_every 2000 --validate_every 2000 --save_every 2000
 
 
 
