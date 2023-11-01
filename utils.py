@@ -121,8 +121,9 @@ def get_norm_stats(dataset_path_list):
                     action = root['/action'][()]
                     dummy_base_action = np.zeros([action.shape[0], 2])
                     action = np.concatenate([action, dummy_base_action], axis=-1)
-        except:
+        except Exception as e:
             print(f'Error loading {dataset_path} in get_norm_stats')
+            print(e)
             quit()
         all_qpos_data.append(torch.from_numpy(qpos))
         all_action_data.append(torch.from_numpy(action))
@@ -193,7 +194,7 @@ def calibrate_linear_vel(base_action):
 def smooth_base_action(base_action):
     return np.stack([
         np.convolve(base_action[:, i], np.ones(20)/20, mode='same') for i in range(base_action.shape[1])
-    ], axis=-1, dtype=np.float32)
+    ], axis=-1).astype(np.float32)
 
 def preprocess_base_action(base_action):
     base_action = calibrate_linear_vel(base_action)
