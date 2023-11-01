@@ -15,8 +15,8 @@ e = IPython.embed
 JOINT_NAMES = ["waist", "shoulder", "elbow", "forearm_roll", "wrist_angle", "wrist_rotate"]
 STATE_NAMES = JOINT_NAMES + ["gripper"]
 
-MIRROR_STATE_MULTIPLY = np.array([-1, 1, 1, -1, 1, -1, 1])[None, ...].astype('float32')
-
+MIRROR_STATE_MULTIPLY = np.array([-1, 1, 1, -1, 1, -1, 1]).astype('float32')
+MIRROR_BASE_MULTIPLY = np.array([1, -1]).astype('float32')
 
 def load_hdf5(dataset_dir, dataset_name):
     dataset_path = os.path.join(dataset_dir, dataset_name + '.hdf5')
@@ -32,8 +32,13 @@ def load_hdf5(dataset_dir, dataset_name):
         image_dict = dict()
         for cam_name in root[f'/observations/images/'].keys():
             image_dict[cam_name] = root[f'/observations/images/{cam_name}'][()]
+        if 'base_action' in root.keys():
+            print('base_action exists')
+            base_action = root['/base_action'][()]
+        else:
+            base_action = None
 
-    return qpos, qvel, action, image_dict
+    return qpos, qvel, action, base_action, image_dict
 
 def main(args):
     dataset_dir = args['dataset_dir']
@@ -42,19 +47,37 @@ def main(args):
     for episode_idx in range(num_episodes):
         dataset_name = f'episode_{episode_idx}'
 
-        qpos, qvel, action, image_dict = load_hdf5(dataset_dir, dataset_name)
+        qpos, qvel, action, base_action, image_dict = load_hdf5(dataset_dir, dataset_name)
 
         # process proprioception
         qpos = np.concatenate([qpos[:, 7:] * MIRROR_STATE_MULTIPLY, qpos[:, :7] * MIRROR_STATE_MULTIPLY], axis=1)
         qvel = np.concatenate([qvel[:, 7:] * MIRROR_STATE_MULTIPLY, qvel[:, :7] * MIRROR_STATE_MULTIPLY], axis=1)
         action = np.concatenate([action[:, 7:] * MIRROR_STATE_MULTIPLY, action[:, :7] * MIRROR_STATE_MULTIPLY], axis=1)
+        if base_action is not None:
+            base_action = base_action * MIRROR_BASE_MULTIPLY
 
         # mirror image obs
-        image_dict['left_wrist'], image_dict['right_wrist'] = image_dict['right_wrist'][:, :, ::-1], image_dict['left_wrist'][:, :, ::-1]
-        image_dict['top'] = image_dict['top'][:, :, ::-1]
+        if 'left_wrist' in image_dict.keys():
+            image_dict['left_wrist'], image_dict['right_wrist'] = image_dict['right_wrist'][:, :, ::-1], image_dict['left_wrist'][:, :, ::-1]
+        elif 'cam_left_wrist':
+            image_dict['cam_left_wrist'], image_dict['cam_right_wrist'] = image_dict['cam_right_wrist'][:, :, ::-1], image_dict['cam_left_wrist'][:, :, ::-1]
+        else:
+            raise Exception('No left_wrist or cam_left_wrist in image_dict')
+
+        if 'top' in image_dict.keys():
+            image_dict['top'] = image_dict['top'][:, :, ::-1]
+        elif 'cam_high' in image_dict.keys():
+            image_dict['cam_high'] = image_dict['cam_high'][:, :, ::-1]
+        else:
+            raise Exception('No top or cam_high in image_dict')
 
         # saving
         data_dict = {
+            '/observations/qpos': qpos,
+            '/observations/qvel': qvel,
+            '/action': action,
+            '/base_action': base_action,
+        } if base_action is not None else {
             '/observations/qpos': qpos,
             '/observations/qvel': qvel,
             '/action': action,
@@ -78,6 +101,8 @@ def main(args):
             qpos = obs.create_dataset('qpos', (max_timesteps, 14))
             qvel = obs.create_dataset('qvel', (max_timesteps, 14))
             action = root.create_dataset('action', (max_timesteps, 14))
+            if base_action is not None:
+                base_action = root.create_dataset('base_action', (max_timesteps, 2))
 
             for name, array in data_dict.items():
                 root[name][...] = array

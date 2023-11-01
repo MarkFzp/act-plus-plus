@@ -127,7 +127,7 @@ def main(args):
         print()
         exit()
 
-    train_dataloader, val_dataloader, stats, _ = load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, args['chunk_size'])
+    train_dataloader, val_dataloader, stats, _ = load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, args['chunk_size'], args['skip_mirrored_data'])
 
     # save dataset stats
     stats_path = os.path.join(ckpt_dir, f'dataset_stats.pkl')
@@ -475,6 +475,7 @@ if __name__ == '__main__':
     parser.add_argument('--validate_every', action='store', type=int, default=500, help='validate_every', required=False)
     parser.add_argument('--save_every', action='store', type=int, default=500, help='save_every', required=False)
     parser.add_argument('--resume_ckpt_path', action='store', type=str, help='resume_ckpt_path', required=False)
+    parser.add_argument('--skip_mirrored_data', action='store_true')
 
     # for ACT
     parser.add_argument('--kl_weight', action='store', type=int, help='KL Weight', required=False)

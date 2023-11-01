@@ -146,16 +146,19 @@ def get_norm_stats(dataset_path_list):
 
     return stats, all_episode_len
 
-def find_all_hdf5(dataset_dir):
+def find_all_hdf5(dataset_dir, skip_mirrored_data):
     hdf5_files = []
     for root, dirs, files in os.walk(dataset_dir):
         for filename in fnmatch.filter(files, '*.hdf5'):
+            if skip_mirrored_data and 'mirror' in filename:
+                continue
             hdf5_files.append(os.path.join(root, filename))
+    print(f'Found {len(hdf5_files)} hdf5 files')
     return hdf5_files
 
 
-def load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, chunk_size):
-    dataset_path_list = find_all_hdf5(dataset_dir)
+def load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, chunk_size, skip_mirrored_data=False):
+    dataset_path_list = find_all_hdf5(dataset_dir, skip_mirrored_data)
     dataset_path_list = [n for n in dataset_path_list if name_filter(n)]
     num_episodes = len(dataset_path_list)
 
