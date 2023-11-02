@@ -111,8 +111,9 @@ def main(args):
         os.makedirs(ckpt_dir)
     config_path = os.path.join(ckpt_dir, 'config.pkl')
     expr_name = ckpt_dir.split('/')[-1]
-    wandb.init(project="mobile-aloha", reinit=True, entity="mobile-aloha", name=expr_name)
-    wandb.config.update(config)
+    if not is_eval:
+        wandb.init(project="mobile-aloha", reinit=True, entity="mobile-aloha", name=expr_name)
+        wandb.config.update(config)
     with open(config_path, 'wb') as f:
         pickle.dump(config, f)
     if is_eval:
@@ -120,7 +121,7 @@ def main(args):
         results = []
         for ckpt_name in ckpt_names:
             success_rate, avg_return = eval_bc(config, ckpt_name, save_episode=True, num_rollouts=1)
-            wandb.log({'success_rate': success_rate, 'avg_return': avg_return})
+            # wandb.log({'success_rate': success_rate, 'avg_return': avg_return})
             results.append([ckpt_name, success_rate, avg_return])
 
         for ckpt_name, success_rate, avg_return in results:

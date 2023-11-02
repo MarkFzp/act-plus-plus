@@ -199,7 +199,7 @@ def calibrate_linear_vel(base_action, c=None):
 
 def smooth_base_action(base_action):
     return np.stack([
-        np.convolve(base_action[:, i], np.ones(20)/20, mode='same') for i in range(base_action.shape[1])
+        np.convolve(base_action[:, i], np.ones(5)/5, mode='same') for i in range(base_action.shape[1])
     ], axis=-1).astype(np.float32)
 
 def preprocess_base_action(base_action):
