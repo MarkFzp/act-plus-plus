@@ -5,8 +5,10 @@ import pickle
 import argparse
 import matplotlib.pyplot as plt
 from copy import deepcopy
+from itertools import repeat
 from tqdm import tqdm
 from einops import rearrange
+import wandb
 
 from constants import DT
 from constants import PUPPET_GRIPPER_JOINT_OPEN
@@ -33,11 +35,15 @@ def main(args):
     task_name = args['task_name']
     batch_size_train = args['batch_size']
     batch_size_val = args['batch_size']
-    num_epochs = args['num_epochs']
+    num_steps = args['num_steps']
+    eval_every = args['eval_every']
+    validate_every = args['validate_every']
+    save_every = args['save_every']
+    resume_ckpt_path = args['resume_ckpt_path']
 
     # get task parameters
     is_sim = task_name[:4] == 'sim_'
-    if is_sim:
+    if is_sim or task_name == 'all':
         from constants import SIM_TASK_CONFIGS
         task_config = SIM_TASK_CONFIGS[task_name]
     else:
@@ -47,6 +53,7 @@ def main(args):
     num_episodes = task_config['num_episodes']
     episode_len = task_config['episode_len']
     camera_names = task_config['camera_names']
+    name_filter = task_config.get('name_filter', lambda n: True)
 
     # fixed parameters
     state_dim = 14
@@ -70,7 +77,8 @@ def main(args):
                          'vq': args['use_vq'],
                          'vq_class': args['vq_class'],
                          'vq_dim': args['vq_dim'],
-                         'action_dim': 16
+                         'action_dim': 16,
+                         'no_encoder': args['no_encoder'],
                          }
     elif policy_class == 'CNNMLP':
         policy_config = {'lr': args['lr'], 'lr_backbone': lr_backbone, 'backbone' : backbone, 'num_queries': 1,
@@ -79,8 +87,12 @@ def main(args):
         raise NotImplementedError
 
     config = {
-        'num_epochs': num_epochs,
+        'num_steps': num_steps,
+        'eval_every': eval_every,
+        'validate_every': validate_every,
+        'save_every': save_every,
         'ckpt_dir': ckpt_dir,
+        'resume_ckpt_path': resume_ckpt_path,
         'episode_len': episode_len,
         'state_dim': state_dim,
         'lr': args['lr'],
@@ -95,11 +107,20 @@ def main(args):
         'load_pretrain': args['load_pretrain']
     }
 
+    if not os.path.isdir(ckpt_dir):
+        os.makedirs(ckpt_dir)
+    config_path = os.path.join(ckpt_dir, 'config.pkl')
+    expr_name = ckpt_dir.split('/')[-1]
+    wandb.init(project="mobile-aloha", reinit=True, entity="mobile-aloha", name=expr_name)
+    wandb.config.update(config)
+    with open(config_path, 'wb') as f:
+        pickle.dump(config, f)
     if is_eval:
         ckpt_names = [f'policy_last.ckpt']
         results = []
         for ckpt_name in ckpt_names:
-            success_rate, avg_return = eval_bc(config, ckpt_name, save_episode=True)
+            success_rate, avg_return = eval_bc(config, ckpt_name, save_episode=True, num_rollouts=1)
+            wandb.log({'success_rate': success_rate, 'avg_return': avg_return})
             results.append([ckpt_name, success_rate, avg_return])
 
         for ckpt_name, success_rate, avg_return in results:
@@ -107,22 +128,21 @@ def main(args):
         print()
         exit()
 
-    train_dataloader, val_dataloader, stats, _ = load_data(dataset_dir, num_episodes, camera_names, batch_size_train, batch_size_val, load_pretrain=config['load_pretrain'])
+    train_dataloader, val_dataloader, stats, _ = load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, args['chunk_size'], args['skip_mirrored_data'], config['load_pretrain'])
 
     # save dataset stats
-    if not os.path.isdir(ckpt_dir):
-        os.makedirs(ckpt_dir)
     stats_path = os.path.join(ckpt_dir, f'dataset_stats.pkl')
     with open(stats_path, 'wb') as f:
         pickle.dump(stats, f)
 
     best_ckpt_info = train_bc(train_dataloader, val_dataloader, config)
-    best_epoch, min_val_loss, best_state_dict = best_ckpt_info
+    best_step, min_val_loss, best_state_dict = best_ckpt_info
 
     # save best checkpoint
     ckpt_path = os.path.join(ckpt_dir, f'policy_best.ckpt')
     torch.save(best_state_dict, ckpt_path)
-    print(f'Best ckpt, val loss {min_val_loss:.6f} @ epoch{best_epoch}')
+    print(f'Best ckpt, val loss {min_val_loss:.6f} @ step{best_step}')
+    wandb.finish()
 
 
 def make_policy(policy_class, policy_config):
@@ -155,7 +175,7 @@ def get_image(ts, camera_names):
     return curr_image
 
 
-def eval_bc(config, ckpt_name, save_episode=True):
+def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
     set_seed(1000)
     ckpt_dir = config['ckpt_dir']
     state_dim = config['state_dim']
@@ -213,7 +233,6 @@ def eval_bc(config, ckpt_name, save_episode=True):
 
     max_timesteps = int(max_timesteps * 1) # may increase for real-world tasks
 
-    num_rollouts = 1
     episode_returns = []
     highest_rewards = []
     for rollout_id in range(num_rollouts):
@@ -299,7 +318,10 @@ def eval_bc(config, ckpt_name, save_episode=True):
                 base_action = calibrate_linear_vel(base_action, c=0)
 
                 ### step the environment
-                ts = env.step(target_qpos, base_action)
+                if real_robot:
+                    ts = env.step(target_qpos, base_action)
+                else:
+                    ts = env.step(target_qpos)
 
                 ### for visualization
                 qpos_list.append(qpos_numpy)
@@ -349,11 +371,14 @@ def forward_pass(data, policy):
 
 
 def train_bc(train_dataloader, val_dataloader, config):
-    num_epochs = config['num_epochs']
+    num_steps = config['num_steps']
     ckpt_dir = config['ckpt_dir']
     seed = config['seed']
     policy_class = config['policy_class']
     policy_config = config['policy_config']
+    eval_every = config['eval_every']
+    validate_every = config['validate_every']
+    save_every = config['save_every']
 
     set_seed(seed)
 
@@ -361,88 +386,84 @@ def train_bc(train_dataloader, val_dataloader, config):
     if config['load_pretrain']:
         loading_status = policy.load_state_dict(torch.load(os.path.join('/home/zfu/interbotix_ws/src/act/ckpts/pretrain_all', 'policy_step_50000_seed_0.ckpt')))
         print(f'loaded! {loading_status}')
+    if config['resume_ckpt_path'] is not None:
+        loading_status = policy.load_state_dict(torch.load(config['resume_ckpt_path']))
+        print(f'Resume policy from: {config["resume_ckpt_path"]}, Status: {loading_status}')
     policy.cuda()
     optimizer = make_optimizer(policy_class, policy)
 
-    train_history = []
-    validation_history = []
     min_val_loss = np.inf
     best_ckpt_info = None
-    for epoch in tqdm(range(num_epochs)):
-        print(f'\nEpoch {epoch}')
+    
+    train_dataloader = repeater(train_dataloader)
+    for step in tqdm(range(num_steps+1)):
         # validation
-        with torch.inference_mode():
-            policy.eval()
-            epoch_dicts = []
-            for batch_idx, data in enumerate(val_dataloader):
-                forward_dict = forward_pass(data, policy)
-                epoch_dicts.append(forward_dict)
-            epoch_summary = compute_dict_mean(epoch_dicts)
-            validation_history.append(epoch_summary)
+        if step % validate_every == 0:
+            print('validating')
 
-            epoch_val_loss = epoch_summary['loss']
-            if epoch_val_loss < min_val_loss:
-                min_val_loss = epoch_val_loss
-                best_ckpt_info = (epoch, min_val_loss, deepcopy(policy.state_dict()))
-        print(f'Val loss:   {epoch_val_loss:.5f}')
-        summary_string = ''
-        for k, v in epoch_summary.items():
-            summary_string += f'{k}: {v.item():.3f} '
-        print(summary_string)
+            with torch.inference_mode():
+                policy.eval()
+                validation_dicts = []
+                for batch_idx, data in enumerate(val_dataloader):
+                    forward_dict = forward_pass(data, policy)
+                    validation_dicts.append(forward_dict)
+
+                validation_summary = compute_dict_mean(validation_dicts)
+
+                epoch_val_loss = validation_summary['loss']
+                if epoch_val_loss < min_val_loss:
+                    min_val_loss = epoch_val_loss
+                    best_ckpt_info = (step, min_val_loss, deepcopy(policy.state_dict()))
+            for k in validation_summary.keys():
+                validation_summary[f'val_{k}'] = validation_summary.pop(k)            
+            wandb.log(validation_summary, step=step)
+            print(f'Val loss:   {epoch_val_loss:.5f}')
+            summary_string = ''
+            for k, v in validation_summary.items():
+                summary_string += f'{k}: {v.item():.3f} '
+            print(summary_string)
+                
+        # evaluation
+        if (step > 0) and (step % eval_every == 0):
+            # first save then eval
+            ckpt_name = f'policy_step_{step}_seed_{seed}.ckpt'
+            ckpt_path = os.path.join(ckpt_dir, ckpt_name)
+            torch.save(policy.state_dict(), ckpt_path)
+            success, _ = eval_bc(config, ckpt_name, save_episode=True, num_rollouts=10)
+            wandb.log({'success': success}, step=step)
 
         # training
         policy.train()
         optimizer.zero_grad()
-        for batch_idx, data in enumerate(train_dataloader):
-            forward_dict = forward_pass(data, policy)
-            # backward
-            loss = forward_dict['loss']
-            loss.backward()
-            optimizer.step()
-            optimizer.zero_grad()
-            train_history.append(detach_dict(forward_dict))
-        epoch_summary = compute_dict_mean(train_history[(batch_idx+1)*epoch:(batch_idx+1)*(epoch+1)])
-        epoch_train_loss = epoch_summary['loss']
-        print(f'Train loss: {epoch_train_loss:.5f}')
-        summary_string = ''
-        for k, v in epoch_summary.items():
-            summary_string += f'{k}: {v.item():.3f} '
-        print(summary_string)
+        data = next(train_dataloader)
+        forward_dict = forward_pass(data, policy)
+        # backward
+        loss = forward_dict['loss']
+        loss.backward()
+        optimizer.step()
+        wandb.log(forward_dict, step=step) # not great, make training 1-2% slower
 
-        if epoch % 1000 == 0:
-            ckpt_path = os.path.join(ckpt_dir, f'policy_epoch_{epoch}_seed_{seed}.ckpt')
+        if step % save_every == 0:
+            ckpt_path = os.path.join(ckpt_dir, f'policy_step_{step}_seed_{seed}.ckpt')
             torch.save(policy.state_dict(), ckpt_path)
-            plot_history(train_history, validation_history, epoch, ckpt_dir, seed)
 
     ckpt_path = os.path.join(ckpt_dir, f'policy_last.ckpt')
     torch.save(policy.state_dict(), ckpt_path)
 
-    best_epoch, min_val_loss, best_state_dict = best_ckpt_info
-    ckpt_path = os.path.join(ckpt_dir, f'policy_epoch_{best_epoch}_seed_{seed}.ckpt')
+    best_step, min_val_loss, best_state_dict = best_ckpt_info
+    ckpt_path = os.path.join(ckpt_dir, f'policy_step_{best_step}_seed_{seed}.ckpt')
     torch.save(best_state_dict, ckpt_path)
-    print(f'Training finished:\nSeed {seed}, val loss {min_val_loss:.6f} at epoch {best_epoch}')
-
-    # save training curves
-    plot_history(train_history, validation_history, num_epochs, ckpt_dir, seed)
+    print(f'Training finished:\nSeed {seed}, val loss {min_val_loss:.6f} at step {best_step}')
 
     return best_ckpt_info
 
-
-def plot_history(train_history, validation_history, num_epochs, ckpt_dir, seed):
-    # save training curves
-    for key in train_history[0]:
-        plot_path = os.path.join(ckpt_dir, f'train_val_{key}_seed_{seed}.png')
-        plt.figure()
-        train_values = [summary[key].item() for summary in train_history]
-        val_values = [summary[key].item() for summary in validation_history]
-        plt.plot(np.linspace(0, num_epochs-1, len(train_history)), train_values, label='train')
-        plt.plot(np.linspace(0, num_epochs-1, len(validation_history)), val_values, label='validation')
-        # plt.ylim([-0.1, 1])
-        plt.tight_layout()
-        plt.legend()
-        plt.title(key)
-        plt.savefig(plot_path)
-    print(f'Saved plots to {ckpt_dir}')
+def repeater(data_loader):
+    epoch = 0
+    for loader in repeat(data_loader):
+        for data in loader:
+            yield data
+        print(f'Epoch {epoch} done')
+        epoch += 1
 
 
 if __name__ == '__main__':
@@ -454,9 +475,14 @@ if __name__ == '__main__':
     parser.add_argument('--task_name', action='store', type=str, help='task_name', required=True)
     parser.add_argument('--batch_size', action='store', type=int, help='batch_size', required=True)
     parser.add_argument('--seed', action='store', type=int, help='seed', required=True)
-    parser.add_argument('--num_epochs', action='store', type=int, help='num_epochs', required=True)
+    parser.add_argument('--num_steps', action='store', type=int, help='num_steps', required=True)
     parser.add_argument('--lr', action='store', type=float, help='lr', required=True)
     parser.add_argument('--load_pretrain', action='store_true', default=False)
+    parser.add_argument('--eval_every', action='store', type=int, default=500, help='eval_every', required=False)
+    parser.add_argument('--validate_every', action='store', type=int, default=500, help='validate_every', required=False)
+    parser.add_argument('--save_every', action='store', type=int, default=500, help='save_every', required=False)
+    parser.add_argument('--resume_ckpt_path', action='store', type=str, help='resume_ckpt_path', required=False)
+    parser.add_argument('--skip_mirrored_data', action='store_true')
 
     # for ACT
     parser.add_argument('--kl_weight', action='store', type=int, help='KL Weight', required=False)
@@ -467,5 +493,6 @@ if __name__ == '__main__':
     parser.add_argument('--use_vq', action='store_true')
     parser.add_argument('--vq_class', action='store', type=int, help='vq_class')
     parser.add_argument('--vq_dim', action='store', type=int, help='vq_dim')
+    parser.add_argument('--no_encoder', action='store_true')
     
     main(vars(parser.parse_args()))

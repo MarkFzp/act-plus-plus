@@ -59,7 +59,7 @@ def get_args_parser():
     parser.add_argument('--policy_class', action='store', type=str, help='policy_class, capitalize', required=True)
     parser.add_argument('--task_name', action='store', type=str, help='task_name', required=True)
     parser.add_argument('--seed', action='store', type=int, help='seed', required=True)
-    parser.add_argument('--num_epochs', action='store', type=int, help='num_epochs', required=True)
+    parser.add_argument('--num_steps', action='store', type=int, help='num_epochs', required=True)
     parser.add_argument('--kl_weight', action='store', type=int, help='KL Weight', required=False)
     parser.add_argument('--chunk_size', action='store', type=int, help='chunk_size', required=False)
     parser.add_argument('--temporal_agg', action='store_true')
@@ -69,7 +69,13 @@ def get_args_parser():
     parser.add_argument('--vq_dim', action='store', type=int, help='vq_dim', required=False)
     parser.add_argument('--load_pretrain', action='store_true', default=False)
     parser.add_argument('--action_dim', action='store', type=int, required=False)
-
+    parser.add_argument('--eval_every', action='store', type=int, default=500, help='eval_every', required=False)
+    parser.add_argument('--validate_every', action='store', type=int, default=500, help='validate_every', required=False)
+    parser.add_argument('--save_every', action='store', type=int, default=500, help='save_every', required=False)
+    parser.add_argument('--resume_ckpt_path', action='store', type=str, help='load_ckpt_path', required=False)
+    parser.add_argument('--no_encoder', action='store_true')
+    parser.add_argument('--skip_mirrored_data', action='store_true')
+    
     return parser
 
 

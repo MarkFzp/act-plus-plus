@@ -1,0 +1,77 @@
+
+conda activate mimic
+export MUJOCO_GL=egl
+cd /home/tonyzhao/Research/act-plus-plus
+python3 imitate_episodes.py \
+--task_name sim_transfer_cube_human \
+--ckpt_dir /scr/tonyzhao/train_logs/vq_test \
+--policy_class ACT --kl_weight 10 --chunk_size 100 \
+--hidden_dim 512 --batch_size 8 --dim_feedforward 3200 \
+--num_epochs 10000 --lr 1e-5 --seed 0 --vq
+
+conda activate mobile
+cd /home/tonyzhao/Research/act-plus-plus
+CUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \
+--task_name all \
+--ckpt_dir /scr/tonyzhao/train_logs/pretrain_all \
+--policy_class ACT --kl_weight 10 --chunk_size 50 \
+--hidden_dim 512 --batch_size 24 --dim_feedforward 3200 --num_epochs 5000 --lr 1e-4 --seed 0
+
+
+#### NOTE to reproduce this experiment, uncomment the sim data filtering in utils.py
+conda activate mobile
+cd /home/tonyzhao/Research/act-plus-plus
+CUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \
+--task_name all \
+--ckpt_dir /scr/tonyzhao/train_logs/pretrain_all \
+--policy_class ACT --kl_weight 10 --chunk_size 50 \
+--hidden_dim 512 --batch_size 24 --dim_feedforward 3200 --lr 1e-4 --seed 0 \
+--num_steps 1000000 --eval_every 10000000000 --validate_every 2000 --save_every 5000
+
+# generate mirrored data
+conda activate mobile
+cd /home/tonyzhao/Research/act-plus-plus
+python3 record_sim_episodes.py --task_name sim_transfer_cube_scripted_mirror --dataset_dir /scr/tonyzhao/datasets/sim_transfer_cube_scripted_mirror --num_episodes 50
+python3 postprocess_episodes.py --dataset_dir /scr/tonyzhao/datasets/sim_transfer_cube_scripted_mirror --num_episodes 50
+# the sim_transfer_cube_scripted_mirror will have 100 episodes
+# I then copy the whole dir to sim_transfer_cube_scripted then removed all mirrored episodes
+# this gives sim_transfer_cube_scripted_mirror (100 episodes) and sim_transfer_cube_scripted (50 episodes)
+
+# visualize the original data
+python3 visualize_episodes.py --dataset_dir /scr/tonyzhao/datasets/sim_transfer_cube_scripted_mirror --episode_idx 0
+# visualize the artificially mirrored data
+python3 visualize_episodes.py --dataset_dir /scr/tonyzhao/datasets/sim_transfer_cube_scripted_mirror --episode_idx 0 --ismirror
+
+# sanity check
+# replay the mirrored data action in the original env
+python3 replay_episodes.py  --dataset_path /scr/tonyzhao/datasets/sim_transfer_cube_scripted_mirror/mirror_episode_0.hdf5
+# replay the original data action in the original env
+python3 replay_episodes.py  --dataset_path /scr/tonyzhao/datasets/sim_transfer_cube_scripted_mirror/episode_0.hdf5
+
+
+# launch experiment on original data
+conda activate mobile
+export MUJOCO_GL=egl
+cd /home/tonyzhao/Research/act-plus-plus
+CUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \
+--task_name sim_transfer_cube_scripted \
+--ckpt_dir /scr/tonyzhao/train_logs/cube_scripted \
+--policy_class ACT --kl_weight 10 --chunk_size 50 \
+--hidden_dim 512 --batch_size 12 --dim_feedforward 3200 --lr 1e-5 --seed 0 \
+--num_steps 100000 --eval_every 2000 --validate_every 2000 --save_every 2000
+
+
+# launch experiment on all data
+conda activate mobile
+export MUJOCO_GL=egl
+cd /home/tonyzhao/Research/act-plus-plus
+CUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \
+--task_name sim_transfer_cube_scripted_mirror \
+--ckpt_dir /scr/tonyzhao/train_logs/cube_scripted_mirror \
+--policy_class ACT --kl_weight 10 --chunk_size 50 \
+--hidden_dim 512 --batch_size 12 --dim_feedforward 3200 --lr 1e-5 --seed 0 \
+--num_steps 100000 --eval_every 2000 --validate_every 2000 --save_every 2000
+
+
+
+

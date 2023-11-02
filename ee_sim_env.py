@@ -83,10 +83,10 @@ class BimanualViperXEETask(base.Task):
         # (2) get env._physics.named.data.xpos['vx300s_left/gripper_link']
         #     get env._physics.named.data.xquat['vx300s_left/gripper_link']
         #     repeat the same for right side
-        np.copyto(physics.data.mocap_pos[0], [-0.31718881, 0.5, 0.29525084])
+        np.copyto(physics.data.mocap_pos[0], [-0.31718881+0.1, 0.5, 0.29525084])
         np.copyto(physics.data.mocap_quat[0], [1, 0, 0, 0])
         # right
-        np.copyto(physics.data.mocap_pos[1], np.array([0.31718881, 0.49999888, 0.29525084]))
+        np.copyto(physics.data.mocap_pos[1], np.array([0.31718881-0.1, 0.49999888, 0.29525084]))
         np.copyto(physics.data.mocap_quat[1],  [1, 0, 0, 0])
 
         # reset gripper control
@@ -136,8 +136,8 @@ class BimanualViperXEETask(base.Task):
         obs['env_state'] = self.get_env_state(physics)
         obs['images'] = dict()
         obs['images']['top'] = physics.render(height=480, width=640, camera_id='top')
-        obs['images']['angle'] = physics.render(height=480, width=640, camera_id='angle')
-        obs['images']['vis'] = physics.render(height=480, width=640, camera_id='front_close')
+        # obs['images']['angle'] = physics.render(height=480, width=640, camera_id='angle')
+        # obs['images']['vis'] = physics.render(height=480, width=640, camera_id='front_close')
         # used in scripted policy to obtain starting pose
         obs['mocap_pose_left'] = np.concatenate([physics.data.mocap_pos[0], physics.data.mocap_quat[0]]).copy()
         obs['mocap_pose_right'] = np.concatenate([physics.data.mocap_pos[1], physics.data.mocap_quat[1]]).copy()
