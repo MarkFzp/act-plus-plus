@@ -88,55 +88,59 @@ class DETRVAE(nn.Module):
 
 
     def encode(self, qpos, actions=None, is_pad=None, vq_sample=None):
-        # cvae encoder
-        is_training = actions is not None # train or val
         bs, _ = qpos.shape
-        ### Obtain latent z from action sequence
-        if is_training:
-            # project action sequence to embedding dim, and concat with a CLS token
-            action_embed = self.encoder_action_proj(actions) # (bs, seq, hidden_dim)
-            qpos_embed = self.encoder_joint_proj(qpos)  # (bs, hidden_dim)
-            qpos_embed = torch.unsqueeze(qpos_embed, axis=1)  # (bs, 1, hidden_dim)
-            cls_embed = self.cls_embed.weight # (1, hidden_dim)
-            cls_embed = torch.unsqueeze(cls_embed, axis=0).repeat(bs, 1, 1) # (bs, 1, hidden_dim)
-            encoder_input = torch.cat([cls_embed, qpos_embed, action_embed], axis=1) # (bs, seq+1, hidden_dim)
-            encoder_input = encoder_input.permute(1, 0, 2) # (seq+1, bs, hidden_dim)
-            # do not mask cls token
-            cls_joint_is_pad = torch.full((bs, 2), False).to(qpos.device) # False: not a padding
-            is_pad = torch.cat([cls_joint_is_pad, is_pad], axis=1)  # (bs, seq+1)
-            # obtain position embedding
-            pos_embed = self.pos_table.clone().detach()
-            pos_embed = pos_embed.permute(1, 0, 2)  # (seq+1, 1, hidden_dim)
-            # query model
-            encoder_output = self.encoder(encoder_input, pos=pos_embed, src_key_padding_mask=is_pad)
-            encoder_output = encoder_output[0] # take cls output only
-            latent_info = self.latent_proj(encoder_output)
-            
-            if self.vq:
-                logits = latent_info.reshape([*latent_info.shape[:-1], self.vq_class, self.vq_dim])
-                probs = torch.softmax(logits, dim=-1)
-                binaries = F.one_hot(torch.multinomial(probs.view(-1, self.vq_dim), 1).squeeze(-1), self.vq_dim).view(-1, self.vq_class, self.vq_dim).float()
-                binaries_flat = binaries.view(-1, self.vq_class * self.vq_dim)
-                probs_flat = probs.view(-1, self.vq_class * self.vq_dim)
-                straigt_through = binaries_flat - probs_flat.detach() + probs_flat
-                latent_input = self.latent_out_proj(straigt_through)
-                mu = logvar = None
-            else:
-                probs = binaries = None
-                mu = latent_info[:, :self.latent_dim]
-                logvar = latent_info[:, self.latent_dim:]
-                latent_sample = reparametrize(mu, logvar)
-                latent_input = self.latent_out_proj(latent_sample)
-
+        if self.encoder is None:
+            latent_sample = torch.zeros([bs, self.latent_dim], dtype=torch.float32).to(qpos.device)
+            latent_input = self.latent_out_proj(latent_sample)
+            probs = binaries = mu = logvar = None
         else:
-            mu = logvar = binaries = probs = None
-            if self.vq:
-                latent_input = self.latent_out_proj(vq_sample.view(-1, self.vq_class * self.vq_dim))
-            else:
-                latent_sample = torch.zeros([bs, self.latent_dim], dtype=torch.float32).to(qpos.device)
-                latent_input = self.latent_out_proj(latent_sample)
+            # cvae encoder
+            is_training = actions is not None # train or val
+            ### Obtain latent z from action sequence
+            if is_training:
+                # project action sequence to embedding dim, and concat with a CLS token
+                action_embed = self.encoder_action_proj(actions) # (bs, seq, hidden_dim)
+                qpos_embed = self.encoder_joint_proj(qpos)  # (bs, hidden_dim)
+                qpos_embed = torch.unsqueeze(qpos_embed, axis=1)  # (bs, 1, hidden_dim)
+                cls_embed = self.cls_embed.weight # (1, hidden_dim)
+                cls_embed = torch.unsqueeze(cls_embed, axis=0).repeat(bs, 1, 1) # (bs, 1, hidden_dim)
+                encoder_input = torch.cat([cls_embed, qpos_embed, action_embed], axis=1) # (bs, seq+1, hidden_dim)
+                encoder_input = encoder_input.permute(1, 0, 2) # (seq+1, bs, hidden_dim)
+                # do not mask cls token
+                cls_joint_is_pad = torch.full((bs, 2), False).to(qpos.device) # False: not a padding
+                is_pad = torch.cat([cls_joint_is_pad, is_pad], axis=1)  # (bs, seq+1)
+                # obtain position embedding
+                pos_embed = self.pos_table.clone().detach()
+                pos_embed = pos_embed.permute(1, 0, 2)  # (seq+1, 1, hidden_dim)
+                # query model
+                encoder_output = self.encoder(encoder_input, pos=pos_embed, src_key_padding_mask=is_pad)
+                encoder_output = encoder_output[0] # take cls output only
+                latent_info = self.latent_proj(encoder_output)
+                
+                if self.vq:
+                    logits = latent_info.reshape([*latent_info.shape[:-1], self.vq_class, self.vq_dim])
+                    probs = torch.softmax(logits, dim=-1)
+                    binaries = F.one_hot(torch.multinomial(probs.view(-1, self.vq_dim), 1).squeeze(-1), self.vq_dim).view(-1, self.vq_class, self.vq_dim).float()
+                    binaries_flat = binaries.view(-1, self.vq_class * self.vq_dim)
+                    probs_flat = probs.view(-1, self.vq_class * self.vq_dim)
+                    straigt_through = binaries_flat - probs_flat.detach() + probs_flat
+                    latent_input = self.latent_out_proj(straigt_through)
+                    mu = logvar = None
+                else:
+                    probs = binaries = None
+                    mu = latent_info[:, :self.latent_dim]
+                    logvar = latent_info[:, self.latent_dim:]
+                    latent_sample = reparametrize(mu, logvar)
+                    latent_input = self.latent_out_proj(latent_sample)
 
-        
+            else:
+                mu = logvar = binaries = probs = None
+                if self.vq:
+                    latent_input = self.latent_out_proj(vq_sample.view(-1, self.vq_class * self.vq_dim))
+                else:
+                    latent_sample = torch.zeros([bs, self.latent_dim], dtype=torch.float32).to(qpos.device)
+                    latent_input = self.latent_out_proj(latent_sample)
+
         return latent_input, probs, binaries, mu, logvar
 
     def forward(self, qpos, image, env_state, actions=None, is_pad=None, vq_sample=None):
@@ -275,7 +279,10 @@ def build(args):
 
     transformer = build_transformer(args)
 
-    encoder = build_encoder(args)
+    if args.no_encoder:
+        encoder = None
+    else:
+        encoder = build_transformer(args)
 
     model = DETRVAE(
         backbones,
