@@ -14,7 +14,7 @@ from constants import DT
 from constants import PUPPET_GRIPPER_JOINT_OPEN
 from utils import load_data # data functions
 from utils import sample_box_pose, sample_insertion_pose # robot functions
-from utils import compute_dict_mean, set_seed, detach_dict, calibrate_linear_vel # helper functions
+from utils import compute_dict_mean, set_seed, detach_dict, calibrate_linear_vel, postprocess_base_action # helper functions
 from policy import ACTPolicy, CNNMLPPolicy
 from visualize_episodes import save_videos
 
@@ -316,7 +316,8 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
                 action = post_process(raw_action)
                 target_qpos = action[:-2]
                 base_action = action[-2:]
-                base_action = calibrate_linear_vel(base_action, c=0)
+                base_action = calibrate_linear_vel(base_action, c=0.19)
+                # base_action = postprocess_base_action(base_action)
 
                 ### step the environment
                 if real_robot:

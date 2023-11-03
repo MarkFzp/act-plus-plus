@@ -208,6 +208,11 @@ def preprocess_base_action(base_action):
 
     return base_action
 
+def postprocess_base_action(self, base_action):
+    linear_vel, angular_vel = base_action
+    angular_vel *= 0.9
+    return np.array([linear_vel, angular_vel])
+
 ### env utils
 
 def sample_box_pose():
