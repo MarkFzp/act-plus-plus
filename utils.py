@@ -4,6 +4,7 @@ import os
 import h5py
 import pickle
 import fnmatch
+import cv2
 from torch.utils.data import TensorDataset, DataLoader
 
 import IPython
@@ -43,6 +44,7 @@ class EpisodicDataset(torch.utils.data.Dataset):
                     is_sim = root.attrs['sim']
                 except:
                     is_sim = False
+                compressed = root.attrs.get('compress', False)
                 if '/base_action' in root:
                     base_action = root['/base_action'][()]
                     base_action = preprocess_base_action(base_action)
@@ -59,6 +61,12 @@ class EpisodicDataset(torch.utils.data.Dataset):
                 image_dict = dict()
                 for cam_name in self.camera_names:
                     image_dict[cam_name] = root[f'/observations/images/{cam_name}'][start_ts]
+                
+                if compressed:
+                    for cam_name in image_dict.keys():
+                        decompressed_image = cv2.imdecode(image_dict[cam_name], 1)
+                        image_dict[cam_name] = np.array(decompressed_image)
+                
                 # get all actions after and including start_ts
                 if is_sim:
                     action = action[start_ts:]
