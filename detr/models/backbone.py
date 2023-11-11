@@ -111,6 +111,22 @@ class Joiner(nn.Sequential):
 
         return out, pos
 
+class JoinerChannelConcat(nn.Sequential):
+    def __init__(self, backbone, position_embedding, conv):
+        super().__init__(backbone, position_embedding, conv)
+
+    def forward(self, tensor_list: NestedTensor):
+        tensor_list = self[2](tensor_list) # 6 to 3 channels
+        xs = self[0](tensor_list)
+        out: List[NestedTensor] = []
+        pos = []
+        for name, x in xs.items():
+            out.append(x)
+            # position encoding
+            pos.append(self[1](x).to(x.dtype))
+
+        return out, pos
+
 
 def build_backbone(args):
     position_embedding = build_position_encoding(args)
@@ -120,3 +136,15 @@ def build_backbone(args):
     model = Joiner(backbone, position_embedding)
     model.num_channels = backbone.num_channels
     return model
+
+def build_backbone_channel_concat(args):
+    position_embedding = build_position_encoding(args)
+    train_backbone = args.lr_backbone > 0
+    return_interm_layers = args.masks
+    backbone = Backbone(args.backbone, train_backbone, return_interm_layers, args.dilation)
+    conv = nn.Conv2d(in_channels=6, out_channels=3, kernel_size=3, stride=1, padding=1)
+    model = JoinerChannelConcat(backbone, position_embedding, conv)
+    model.num_channels = backbone.num_channels
+    return model
+
+

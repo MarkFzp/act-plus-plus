@@ -8,6 +8,7 @@ from copy import deepcopy
 from itertools import repeat
 from tqdm import tqdm
 from einops import rearrange
+from collections import deque
 import wandb
 
 from constants import DT
@@ -40,6 +41,7 @@ def main(args):
     validate_every = args['validate_every']
     save_every = args['save_every']
     resume_ckpt_path = args['resume_ckpt_path']
+    history = args['history']
 
     # get task parameters
     is_sim = task_name[:4] == 'sim_'
@@ -79,6 +81,7 @@ def main(args):
                          'vq_dim': args['vq_dim'],
                          'action_dim': 16,
                          'no_encoder': args['no_encoder'],
+                         'history': history,
                          }
     elif policy_class == 'CNNMLP':
         policy_config = {'lr': args['lr'], 'lr_backbone': lr_backbone, 'backbone' : backbone, 'num_queries': 1,
@@ -104,7 +107,8 @@ def main(args):
         'temporal_agg': args['temporal_agg'],
         'camera_names': camera_names,
         'real_robot': not is_sim,
-        'load_pretrain': args['load_pretrain']
+        'load_pretrain': args['load_pretrain'],
+        'history': history,
     }
 
     if not os.path.isdir(ckpt_dir):
@@ -129,7 +133,7 @@ def main(args):
         print()
         exit()
 
-    train_dataloader, val_dataloader, stats, _ = load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, args['chunk_size'], args['skip_mirrored_data'], config['load_pretrain'])
+    train_dataloader, val_dataloader, stats, _ = load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, args['chunk_size'], history, args['skip_mirrored_data'], config['load_pretrain'])
 
     # save dataset stats
     stats_path = os.path.join(ckpt_dir, f'dataset_stats.pkl')
@@ -188,8 +192,10 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
     max_timesteps = config['episode_len']
     task_name = config['task_name']
     temporal_agg = config['temporal_agg']
+    history = config['history']
     onscreen_cam = 'angle'
     vq = config['policy_config']['vq']
+    has_history = history >= 1
 
     # load policy and stats
     ckpt_path = os.path.join(ckpt_dir, ckpt_name)
@@ -261,6 +267,8 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
         qpos_list = []
         target_qpos_list = []
         rewards = []
+        if has_history:
+            image_obs_history = deque(maxlen=history+1)
         with torch.inference_mode():
             for t in range(max_timesteps):
                 ### update onscreen render and wait for DT
@@ -281,6 +289,9 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
                 qpos_history[:, t] = qpos
                 curr_image = get_image(ts, camera_names)
 
+                if has_history:
+                    image_obs_history.append(curr_image)
+
                 ### query policy
                 if config['policy_class'] == "ACT":
                     if t % query_frequency == 0:
@@ -292,7 +303,9 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
                             vq_sample = latent_model.generate(1, temperature=1, x=None)
                             all_actions = policy(qpos, curr_image, vq_sample=vq_sample)
                         else:
-                            # e()
+                            if has_history:
+                                history_image = image_obs_history[0]
+                                curr_image = torch.cat([curr_image, history_image], dim=2)
                             all_actions = policy(qpos, curr_image)
                     if temporal_agg:
                         all_time_actions[[t], t:t+num_queries] = all_actions
@@ -496,5 +509,6 @@ if __name__ == '__main__':
     parser.add_argument('--vq_class', action='store', type=int, help='vq_class')
     parser.add_argument('--vq_dim', action='store', type=int, help='vq_dim')
     parser.add_argument('--no_encoder', action='store_true')
+    parser.add_argument('--history', action='store', type=int, required=False, default=0) # default no history
     
     main(vars(parser.parse_args()))

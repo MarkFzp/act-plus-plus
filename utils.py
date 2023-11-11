@@ -10,7 +10,7 @@ import IPython
 e = IPython.embed
 
 class EpisodicDataset(torch.utils.data.Dataset):
-    def __init__(self, dataset_path_list, camera_names, norm_stats, episode_ids, episode_len, chunk_size):
+    def __init__(self, dataset_path_list, camera_names, norm_stats, episode_ids, episode_len, chunk_size, history):
         super(EpisodicDataset).__init__()
         self.episode_ids = episode_ids
         self.dataset_path_list = dataset_path_list
@@ -18,6 +18,7 @@ class EpisodicDataset(torch.utils.data.Dataset):
         self.norm_stats = norm_stats
         self.episode_len = episode_len
         self.chunk_size = chunk_size
+        self.history = history
         self.cumulative_len = np.cumsum(self.episode_len)
         self.max_episode_len = max(episode_len)
         self.__getitem__(0) # initialize self.is_sim
@@ -58,7 +59,13 @@ class EpisodicDataset(torch.utils.data.Dataset):
                 qvel = root['/observations/qvel'][start_ts]
                 image_dict = dict()
                 for cam_name in self.camera_names:
-                    image_dict[cam_name] = root[f'/observations/images/{cam_name}'][start_ts]
+                    if self.history >= 1:
+                        curr_frame = root[f'/observations/images/{cam_name}'][start_ts]
+                        history_frame = root[f'/observations/images/{cam_name}'][max(0, start_ts - self.history)]
+                        concat_image = np.concatenate([curr_frame, history_frame], axis=2)
+                        image_dict[cam_name] = concat_image
+                    else:
+                        image_dict[cam_name] = root[f'/observations/images/{cam_name}'][start_ts]
                 # get all actions after and including start_ts
                 if is_sim:
                     action = action[start_ts:]
@@ -159,7 +166,7 @@ def find_all_hdf5(dataset_dir, skip_mirrored_data):
     return hdf5_files
 
 
-def load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, chunk_size, skip_mirrored_data=False, load_pretrain=False):
+def load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, chunk_size, history, skip_mirrored_data=False, load_pretrain=False):
     dataset_path_list = find_all_hdf5(dataset_dir, skip_mirrored_data)
     dataset_path_list = [n for n in dataset_path_list if name_filter(n)]
     num_episodes = len(dataset_path_list)
@@ -181,8 +188,8 @@ def load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_si
     val_episode_len = [all_episode_len[i] for i in val_episode_ids]
 
     # construct dataset and dataloader
-    train_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, train_episode_ids, train_episode_len, chunk_size)
-    val_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, val_episode_ids, val_episode_len, chunk_size)
+    train_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, train_episode_ids, train_episode_len, chunk_size, history)
+    val_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, val_episode_ids, val_episode_len, chunk_size, history)
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True, pin_memory=True, num_workers=1, prefetch_factor=1)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size_val, shuffle=True, pin_memory=True, num_workers=1, prefetch_factor=1)
 

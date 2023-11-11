@@ -6,7 +6,7 @@ import torch
 from torch import nn
 from torch.autograd import Variable
 import torch.nn.functional as F
-from .backbone import build_backbone
+from .backbone import build_backbone, build_backbone_channel_concat
 from .transformer import build_transformer, TransformerEncoder, TransformerEncoderLayer
 
 import numpy as np
@@ -274,8 +274,12 @@ def build(args):
     # From image
     backbones = []
     for _ in args.camera_names:
-        backbone = build_backbone(args)
-        backbones.append(backbone)
+        if args.history >= 1:
+            backbone = build_backbone_channel_concat(args)
+            backbones.append(backbone)
+        else:
+            backbone = build_backbone(args)
+            backbones.append(backbone)       
 
     transformer = build_transformer(args)
 

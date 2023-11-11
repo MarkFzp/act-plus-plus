@@ -75,6 +75,7 @@ def get_args_parser():
     parser.add_argument('--resume_ckpt_path', action='store', type=str, help='load_ckpt_path', required=False)
     parser.add_argument('--no_encoder', action='store_true')
     parser.add_argument('--skip_mirrored_data', action='store_true')
+    parser.add_argument('--history', action='store', type=int, required=False, default=0) # default no history
     
     return parser
 
