@@ -99,7 +99,7 @@ def save_videos(video, dt, video_path=None):
             images = []
             for cam_name in cam_names:
                 image = image_dict[cam_name]
-                # image = image[:, :, [2, 1, 0]] # swap B and R channel
+                image = image[:, :, [2, 1, 0]] # swap B and R channel
                 images.append(image)
             images = np.concatenate(images, axis=1)
             out.write(images)
@@ -119,7 +119,7 @@ def save_videos(video, dt, video_path=None):
         out = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))
         for t in range(n_frames):
             image = all_cam_videos[t]
-            # image = image[:, :, [2, 1, 0]]  # swap B and R channel
+            image = image[:, :, [2, 1, 0]]  # swap B and R channel
             out.write(image)
         out.release()
         print(f'Saved video to: {video_path}')
@@ -165,15 +165,15 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    output_dataset_dir = args.dataset_dir + '_compressed'
-    os.makedirs(output_dataset_dir, exist_ok=True)
+    output_dataset_dir = args.dataset_dir # + '_compressed'
+    # os.makedirs(output_dataset_dir, exist_ok=True)
 
-    # Iterate over each file in the directory
-    for filename in tqdm(os.listdir(args.dataset_dir), desc="Compressing data"):
-        if filename.endswith('.hdf5'):
-            input_path = os.path.join(args.dataset_dir, filename)
-            output_path = os.path.join(output_dataset_dir, filename)
-            compress_dataset(input_path, output_path)
+    # # Iterate over each file in the directory
+    # for filename in tqdm(os.listdir(args.dataset_dir), desc="Compressing data"):
+    #     if filename.endswith('.hdf5'):
+    #         input_path = os.path.join(args.dataset_dir, filename)
+    #         output_path = os.path.join(output_dataset_dir, filename)
+    #         compress_dataset(input_path, output_path)
 
     # After processing all datasets, load and save the video for the first episode
     print(f'Saving video for episode 0 in {output_dataset_dir}')
