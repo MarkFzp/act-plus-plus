@@ -11,7 +11,7 @@ import IPython
 e = IPython.embed
 
 class EpisodicDataset(torch.utils.data.Dataset):
-    def __init__(self, dataset_path_list, camera_names, norm_stats, episode_ids, episode_len, chunk_size):
+    def __init__(self, dataset_path_list, camera_names, norm_stats, episode_ids, episode_len, chunk_size, policy_class):
         super(EpisodicDataset).__init__()
         self.episode_ids = episode_ids
         self.dataset_path_list = dataset_path_list
@@ -21,6 +21,7 @@ class EpisodicDataset(torch.utils.data.Dataset):
         self.chunk_size = chunk_size
         self.cumulative_len = np.cumsum(self.episode_len)
         self.max_episode_len = max(episode_len)
+        self.policy_class = policy_class
         self.__getitem__(0) # initialize self.is_sim
         self.is_sim = False
 
@@ -101,7 +102,14 @@ class EpisodicDataset(torch.utils.data.Dataset):
 
             # normalize image and change dtype to float
             image_data = image_data / 255.0
-            action_data = (action_data - self.norm_stats["action_mean"]) / self.norm_stats["action_std"]
+
+            if self.policy_class == 'Diffusion':
+                # normalize to [-1, 1]
+                action_data = ((action_data - self.norm_stats["action_min"]) / (self.norm_stats["action_max"] - self.norm_stats["action_min"])) * 2 - 1
+            else:
+                # normalize to mean 0 std 1
+                action_data = (action_data - self.norm_stats["action_mean"]) / self.norm_stats["action_std"]
+
             qpos_data = (qpos_data - self.norm_stats["qpos_mean"]) / self.norm_stats["qpos_std"]
 
         except:
@@ -150,7 +158,12 @@ def get_norm_stats(dataset_path_list):
     qpos_std = all_qpos_data.std(dim=[0]).float()
     qpos_std = torch.clip(qpos_std, 1e-2, np.inf) # clipping
 
+    action_min = all_action_data.min(dim=0).values.float()
+    action_max = all_action_data.max(dim=0).values.float()
+
+    eps = 0.0001
     stats = {"action_mean": action_mean.numpy(), "action_std": action_std.numpy(),
+             "action_min": action_min.numpy() - eps,"action_max": action_max.numpy() + eps,
              "qpos_mean": qpos_mean.numpy(), "qpos_std": qpos_std.numpy(),
              "example_qpos": qpos}
 
@@ -167,7 +180,7 @@ def find_all_hdf5(dataset_dir, skip_mirrored_data):
     return hdf5_files
 
 
-def load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, chunk_size, skip_mirrored_data=False, load_pretrain=False):
+def load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, chunk_size, skip_mirrored_data=False, load_pretrain=False, policy_class=None):
     dataset_path_list = find_all_hdf5(dataset_dir, skip_mirrored_data)
     dataset_path_list = [n for n in dataset_path_list if name_filter(n)]
     num_episodes = len(dataset_path_list)
@@ -189,8 +202,8 @@ def load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_si
     val_episode_len = [all_episode_len[i] for i in val_episode_ids]
 
     # construct dataset and dataloader
-    train_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, train_episode_ids, train_episode_len, chunk_size)
-    val_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, val_episode_ids, val_episode_len, chunk_size)
+    train_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, train_episode_ids, train_episode_len, chunk_size, policy_class)
+    val_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, val_episode_ids, val_episode_len, chunk_size, policy_class)
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True, pin_memory=True, num_workers=1, prefetch_factor=1)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size_val, shuffle=True, pin_memory=True, num_workers=1, prefetch_factor=1)
 

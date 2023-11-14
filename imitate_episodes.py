@@ -15,7 +15,7 @@ from constants import PUPPET_GRIPPER_JOINT_OPEN
 from utils import load_data # data functions
 from utils import sample_box_pose, sample_insertion_pose # robot functions
 from utils import compute_dict_mean, set_seed, detach_dict, calibrate_linear_vel, postprocess_base_action # helper functions
-from policy import ACTPolicy, CNNMLPPolicy
+from policy import ACTPolicy, CNNMLPPolicy, DiffusionPolicy
 from visualize_episodes import save_videos
 
 from detr.models.latent_model import Latent_Model_Transformer
@@ -80,6 +80,19 @@ def main(args):
                          'action_dim': 16,
                          'no_encoder': args['no_encoder'],
                          }
+    elif policy_class == 'Diffusion':
+
+        policy_config = {'lr': args['lr'],
+                         'camera_names': camera_names,
+                         'action_dim': 16,
+                         'observation_horizon': 1,
+                         'action_horizon': 8,
+                         'prediction_horizon': args['chunk_size'],
+                         'num_queries': args['chunk_size'],
+                         'num_inference_timesteps': 10,
+                         'ema_power': 0.75,
+                         'vq': False,
+                         }
     elif policy_class == 'CNNMLP':
         policy_config = {'lr': args['lr'], 'lr_backbone': lr_backbone, 'backbone' : backbone, 'num_queries': 1,
                          'camera_names': camera_names,}
@@ -129,7 +142,7 @@ def main(args):
         print()
         exit()
 
-    train_dataloader, val_dataloader, stats, _ = load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, args['chunk_size'], args['skip_mirrored_data'], config['load_pretrain'])
+    train_dataloader, val_dataloader, stats, _ = load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, args['chunk_size'], args['skip_mirrored_data'], config['load_pretrain'], policy_class)
 
     # save dataset stats
     stats_path = os.path.join(ckpt_dir, f'dataset_stats.pkl')
@@ -151,6 +164,8 @@ def make_policy(policy_class, policy_config):
         policy = ACTPolicy(policy_config)
     elif policy_class == 'CNNMLP':
         policy = CNNMLPPolicy(policy_config)
+    elif policy_class == 'Diffusion':
+        policy = DiffusionPolicy(policy_config)
     else:
         raise NotImplementedError
     return policy
@@ -160,6 +175,8 @@ def make_optimizer(policy_class, policy):
     if policy_class == 'ACT':
         optimizer = policy.configure_optimizers()
     elif policy_class == 'CNNMLP':
+        optimizer = policy.configure_optimizers()
+    elif policy_class == 'Diffusion':
         optimizer = policy.configure_optimizers()
     else:
         raise NotImplementedError
@@ -214,7 +231,10 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
         stats = pickle.load(f)
 
     pre_process = lambda s_qpos: (s_qpos - stats['qpos_mean']) / stats['qpos_std']
-    post_process = lambda a: a * stats['action_std'] + stats['action_mean']
+    if policy_class == 'Diffusion':
+        post_process = lambda a: ((a + 1) / 2) * (stats['action_max'] - stats['action_min']) + stats['action_min']
+    else:
+        post_process = lambda a: a * stats['action_std'] + stats['action_mean']
 
     # load environment
     if real_robot:
@@ -306,6 +326,10 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
                         raw_action = (actions_for_curr_step * exp_weights).sum(dim=0, keepdim=True)
                     else:
                         raw_action = all_actions[:, t % query_frequency]
+                elif config['policy_class'] == "Diffusion":
+                    if t % query_frequency == 0:
+                        all_actions = policy(qpos, curr_image)
+                    raw_action = all_actions[:, t % query_frequency]
                 elif config['policy_class'] == "CNNMLP":
                     raw_action = policy(qpos, curr_image)
                 else:
@@ -416,7 +440,7 @@ def train_bc(train_dataloader, val_dataloader, config):
                 if epoch_val_loss < min_val_loss:
                     min_val_loss = epoch_val_loss
                     best_ckpt_info = (step, min_val_loss, deepcopy(policy.state_dict()))
-            for k in validation_summary.keys():
+            for k in list(validation_summary.keys()):
                 validation_summary[f'val_{k}'] = validation_summary.pop(k)            
             wandb.log(validation_summary, step=step)
             print(f'Val loss:   {epoch_val_loss:.5f}')
