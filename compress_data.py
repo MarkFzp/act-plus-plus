@@ -165,15 +165,15 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    output_dataset_dir = args.dataset_dir # + '_compressed'
-    # os.makedirs(output_dataset_dir, exist_ok=True)
+    output_dataset_dir = args.dataset_dir + '_compressed'
+    os.makedirs(output_dataset_dir, exist_ok=True)
 
-    # # Iterate over each file in the directory
-    # for filename in tqdm(os.listdir(args.dataset_dir), desc="Compressing data"):
-    #     if filename.endswith('.hdf5'):
-    #         input_path = os.path.join(args.dataset_dir, filename)
-    #         output_path = os.path.join(output_dataset_dir, filename)
-    #         compress_dataset(input_path, output_path)
+    # Iterate over each file in the directory
+    for filename in tqdm(os.listdir(args.dataset_dir), desc="Compressing data"):
+        if filename.endswith('.hdf5'):
+            input_path = os.path.join(args.dataset_dir, filename)
+            output_path = os.path.join(output_dataset_dir, filename)
+            compress_dataset(input_path, output_path)
 
     # After processing all datasets, load and save the video for the first episode
     print(f'Saving video for episode 0 in {output_dataset_dir}')
