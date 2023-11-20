@@ -25,9 +25,10 @@ def main():
     # at test time, input desired speed profile and convert that to command
 
     #########################################################
-    history_len = 20
-    future_len = 20
-    batch_size_train = 8
+    history_len = 50
+    future_len = 50
+    prediction_len = 50
+    batch_size_train = 16
     batch_size_val  = 16
     lr = 1e-5
     weight_decay = 1e-4
@@ -36,10 +37,11 @@ def main():
     validate_every = 2000
     save_every = 2000
 
-    expr_name = f'actuator_network_test_{history_len}_{future_len}'
-    ckpt_dir = f'/scr/tonyzhao/train_logs/{expr_name}'
-    dataset_dir = '/scr/tonyzhao/compressed_datasets/aloha_mobile_fork/'
+    expr_name = f'actuator_network_test_{history_len}_{future_len}_{prediction_len}'
+    ckpt_dir = f'/scr/tonyzhao/train_logs/{expr_name}' if os.getlogin() == 'tonyzhao' else f'./ckpts/{expr_name}'
+    dataset_dir = '/scr/tonyzhao/compressed_datasets/aloha_mobile_fork/' if os.getlogin() == 'tonyzhao' else '/home/zfu/data/aloha_mobile_fork/'
     #########################################################
+    assert(history_len + future_len >= prediction_len)
 
     wandb.init(project="mobile-aloha2", reinit=True, entity="mobile-aloha2", name=expr_name) # mode='disabled', 
 
@@ -65,6 +67,7 @@ def main():
     norm_stats, all_episode_len = get_norm_stats(dataset_path_list)
     train_episode_len = [all_episode_len[i] for i in train_episode_ids]
     val_episode_len = [all_episode_len[i] for i in val_episode_ids]
+    assert(all_episode_len[0] % prediction_len == 0)
 
     # save dataset stats
     stats_path = os.path.join(ckpt_dir, f'actuator_net_stats.pkl')
@@ -72,12 +75,12 @@ def main():
         pickle.dump(norm_stats, f)
 
     # construct dataset and dataloader
-    train_dataset = EpisodicDataset(dataset_path_list, norm_stats, train_episode_ids, train_episode_len, history_len, future_len)
-    val_dataset = EpisodicDataset(dataset_path_list, norm_stats, val_episode_ids, val_episode_len, history_len, future_len)
+    train_dataset = EpisodicDataset(dataset_path_list, norm_stats, train_episode_ids, train_episode_len, history_len, future_len, prediction_len)
+    val_dataset = EpisodicDataset(dataset_path_list, norm_stats, val_episode_ids, val_episode_len, history_len, future_len, prediction_len)
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True, pin_memory=True, num_workers=1, prefetch_factor=1)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size_val, shuffle=True, pin_memory=True, num_workers=1, prefetch_factor=1)
     
-    policy = ActuatorNetwork().cuda()
+    policy = ActuatorNetwork(prediction_len).cuda()
     optimizer = torch.optim.AdamW(policy.parameters(), lr=lr, weight_decay=weight_decay)
 
     n_parameters = sum(p.numel() for p in policy.parameters() if p.requires_grad)
@@ -114,8 +117,8 @@ def main():
                 summary_string += f'{k}: {v.item():.3f} '
             print(summary_string)
 
-            visualize_prediction(dataset_path_list, val_episode_ids, policy, norm_stats, history_len, future_len, ckpt_dir, step, 'val')
-            visualize_prediction(dataset_path_list, train_episode_ids, policy, norm_stats, history_len, future_len, ckpt_dir, step, 'train')
+            visualize_prediction(dataset_path_list, val_episode_ids, policy, norm_stats, history_len, future_len, prediction_len, ckpt_dir, step, 'val')
+            visualize_prediction(dataset_path_list, train_episode_ids, policy, norm_stats, history_len, future_len, prediction_len, ckpt_dir, step, 'train')
 
 
         # training
@@ -143,7 +146,7 @@ def main():
     print(f'Training finished:\nval loss {min_val_loss:.6f} at step {best_step}')
 
 
-def visualize_prediction(dataset_path_list, episode_ids, policy, norm_stats, history_len, future_len, ckpt_dir, step, name):
+def visualize_prediction(dataset_path_list, episode_ids, policy, norm_stats, history_len, future_len, prediction_len, ckpt_dir, step, name):
     num_vis = 2
     episode_ids = episode_ids[:num_vis]
     vis_path = [dataset_path_list[i] for i in episode_ids]
@@ -169,13 +172,13 @@ def visualize_prediction(dataset_path_list, episode_ids, policy, norm_stats, his
         episode_len = commanded_speed.shape[0]
 
         all_pred = []
-        for t in range(episode_len):
+        for t in range(0, episode_len, prediction_len):
             offset_start_ts = t + history_len
             policy_input = norm_observed_speed[offset_start_ts-history_len: offset_start_ts+future_len]
             policy_input = torch.from_numpy(policy_input).float().unsqueeze(dim=0).cuda()
             pred = policy(policy_input)
             pred = pred.detach().cpu().numpy()[0]
-            all_pred.append(out_unnorm_fn(pred))
+            all_pred += out_unnorm_fn(pred).tolist()
         all_pred = np.array(all_pred)
 
         plot_path = os.path.join(ckpt_dir, f'{name}{i}_step{step}_linear')
@@ -183,6 +186,9 @@ def visualize_prediction(dataset_path_list, episode_ids, policy, norm_stats, his
         plt.plot(commanded_speed[:, 0], label='commanded_speed_linear')
         plt.plot(observed_speed[:, 0], label='observed_speed_linear')
         plt.plot(all_pred[:, 0],  label='pred_commanded_speed_linear')
+        # plot vertical grey dotted lines every prediction_len
+        for t in range(0, episode_len, prediction_len):
+            plt.axvline(t, linestyle='--', color='grey')
         plt.legend()
         plt.savefig(plot_path)
         plt.close()
@@ -192,6 +198,9 @@ def visualize_prediction(dataset_path_list, episode_ids, policy, norm_stats, his
         plt.plot(commanded_speed[:, 1], label='commanded_speed_angular')
         plt.plot(observed_speed[:, 1], label='observed_speed_angular')
         plt.plot(all_pred[:, 1], label='pred_commanded_speed_angular')
+        # plot vertical dotted lines every prediction_len
+        for t in range(0, episode_len, prediction_len):
+            plt.axvline(t, linestyle='--', color='grey')
         plt.legend()
         plt.savefig(plot_path)
         plt.close()
@@ -200,7 +209,7 @@ def visualize_prediction(dataset_path_list, episode_ids, policy, norm_stats, his
 
 class ActuatorNetwork(nn.Module):
 
-    def __init__(self):
+    def __init__(self, prediction_len):
         super().__init__()
         d_model = 256
         encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=8)
@@ -208,6 +217,7 @@ class ActuatorNetwork(nn.Module):
         self.pe = PositionalEncoding(d_model)
         self.in_proj = nn.Linear(2, d_model)
         self.out_proj = nn.Linear(d_model, 2)
+        self.prediction_len = prediction_len
 
     def forward(self, src, tgt=None):
         if tgt is not None: # training time
@@ -216,19 +226,24 @@ class ActuatorNetwork(nn.Module):
             src = torch.einsum('b s d -> s b d', src)
             src = self.pe(src)
             out = self.transformer(src)
-            out = out[0] # take first token only
+            
+            tgt = torch.einsum('b s d -> s b d', tgt)
+            assert(self.prediction_len == tgt.shape[0])
+            out = out[0: self.prediction_len] # take first few tokens only for prediction
             out = self.out_proj(out)
 
             l2_loss = loss = F.mse_loss(out, tgt)
             loss_dict = {'loss': l2_loss}
+            out = torch.einsum('s b d -> b s d', out)
             return out, loss_dict
         else:
             src = self.in_proj(src)
             src = torch.einsum('b s d -> s b d', src)
             src = self.pe(src)
             out = self.transformer(src)
-            out = out[0] # take first token only
+            out = out[0: self.prediction_len] # take first few tokens only for prediction
             out = self.out_proj(out)
+            out = torch.einsum('s b d -> b s d', out)
             return out
 
 
@@ -288,7 +303,7 @@ def get_norm_stats(dataset_path_list):
 
 
 class EpisodicDataset(torch.utils.data.Dataset):
-    def __init__(self, dataset_path_list, norm_stats, episode_ids, episode_len, history_len, future_len):
+    def __init__(self, dataset_path_list, norm_stats, episode_ids, episode_len, history_len, future_len, prediction_len):
         super(EpisodicDataset).__init__()
         self.episode_ids = episode_ids
         self.dataset_path_list = dataset_path_list
@@ -298,9 +313,11 @@ class EpisodicDataset(torch.utils.data.Dataset):
         self.max_episode_len = max(episode_len)
         self.history_len = history_len
         self.future_len = future_len
+        self.prediction_len = prediction_len
         self.is_sim = False
         self.history_pad = np.zeros((self.history_len, 2))
         self.future_pad = np.zeros((self.future_len, 2))
+        self.prediction_pad = np.zeros((self.prediction_len, 2))
         self.__getitem__(0) # initialize self.is_sim
 
     def __len__(self):
@@ -322,9 +339,10 @@ class EpisodicDataset(torch.utils.data.Dataset):
                 commanded_speed = root['/base_action'][()]
                 observed_speed = root['/obs_tracer'][()]
                 observed_speed = np.concatenate([self.history_pad, observed_speed, self.future_pad], axis=0)
+                commanded_speed = np.concatenate([commanded_speed, self.prediction_pad], axis=0)
 
                 offset_start_ts = start_ts + self.history_len
-                commanded_speed = commanded_speed[start_ts]
+                commanded_speed = commanded_speed[start_ts: start_ts+self.prediction_len]
                 observed_speed = observed_speed[offset_start_ts-self.history_len: offset_start_ts+self.future_len]
 
             commanded_speed = torch.from_numpy(commanded_speed).float()
