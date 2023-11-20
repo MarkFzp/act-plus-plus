@@ -30,7 +30,7 @@ def main():
     prediction_len = 50
     batch_size_train = 16
     batch_size_val  = 16
-    lr = 1e-5
+    lr = 1e-4
     weight_decay = 1e-4
 
     num_steps = 10000
