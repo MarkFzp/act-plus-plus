@@ -99,6 +99,13 @@ def main(args):
     else:
         raise NotImplementedError
 
+    actuator_config = {
+        'actuator_network_dir': args['actuator_network_dir'],
+        'history_len': args['history_len'],
+        'future_len': args['future_len'],
+        'prediction_len': args['prediction_len'],
+    }
+
     config = {
         'num_steps': num_steps,
         'eval_every': eval_every,
@@ -117,7 +124,8 @@ def main(args):
         'temporal_agg': args['temporal_agg'],
         'camera_names': camera_names,
         'real_robot': not is_sim,
-        'load_pretrain': args['load_pretrain']
+        'load_pretrain': args['load_pretrain'],
+        'actuator_config': actuator_config,
     }
 
     if not os.path.isdir(ckpt_dir):
@@ -207,6 +215,8 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
     temporal_agg = config['temporal_agg']
     onscreen_cam = 'angle'
     vq = config['policy_config']['vq']
+    actuator_config = config['actuator_config']
+    use_actuator_net = actuator_config['actuator_network_dir'] is not None
 
     # load policy and stats
     ckpt_path = os.path.join(ckpt_dir, ckpt_name)
@@ -229,6 +239,29 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
     stats_path = os.path.join(ckpt_dir, f'dataset_stats.pkl')
     with open(stats_path, 'rb') as f:
         stats = pickle.load(f)
+    if use_actuator_net:
+        prediction_len = actuator_config['prediction_len']
+        future_len = actuator_config['future_len']
+        history_len = actuator_config['history_len']
+        actuator_network_dir = actuator_config['actuator_network_dir']
+
+        from train_actuator_network import ActuatorNetwork
+        actuator_network = ActuatorNetwork(prediction_len)
+        actuator_network_path = os.path.join(actuator_network_dir, 'actuator_net_last.ckpt')
+        loading_status = actuator_network.load_state_dict(torch.load(actuator_network_path))
+        actuator_network.eval()
+        actuator_network.cuda()
+        print(f'Loaded actuator network from: {actuator_network_path}, {loading_status}')
+
+        actuator_stats_path  = os.path.join(actuator_network_dir, 'actuator_net_stats.pkl')
+        with open(actuator_stats_path, 'rb') as f:
+            actuator_stats = pickle.load(f)
+        
+        actuator_unnorm = lambda x: x * actuator_stats['action_std'] + actuator_stats['action_mean']
+        actuator_norm = lambda x: (x - actuator_stats['action_mean']) / actuator_stats['action_std']
+        def collect_base_action(all_actions, norm_episode_all_base_actions):
+            post_processed_actions = post_process(all_actions.squeeze(0).cpu().numpy())
+            norm_episode_all_base_actions += actuator_norm(post_processed_actions[:, -2:]).tolist()
 
     pre_process = lambda s_qpos: (s_qpos - stats['qpos_mean']) / stats['qpos_std']
     if policy_class == 'Diffusion':
@@ -281,6 +314,7 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
         qpos_list = []
         target_qpos_list = []
         rewards = []
+        norm_episode_all_base_actions = [actuator_norm(np.zeros(history_len, 2)).tolist()]
         with torch.inference_mode():
             for t in range(max_timesteps):
                 ### update onscreen render and wait for DT
@@ -314,6 +348,8 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
                         else:
                             # e()
                             all_actions = policy(qpos, curr_image)
+                        if use_actuator_net:
+                            collect_base_action(all_actions, norm_episode_all_base_actions)
                     if temporal_agg:
                         all_time_actions[[t], t:t+num_queries] = all_actions
                         actions_for_curr_step = all_time_actions[:, t]
@@ -329,9 +365,14 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
                 elif config['policy_class'] == "Diffusion":
                     if t % query_frequency == 0:
                         all_actions = policy(qpos, curr_image)
+                        if use_actuator_net:
+                            collect_base_action(all_actions, norm_episode_all_base_actions)
                     raw_action = all_actions[:, t % query_frequency]
                 elif config['policy_class'] == "CNNMLP":
                     raw_action = policy(qpos, curr_image)
+                    all_actions = raw_action.unsqueeze(0)
+                    if use_actuator_net:
+                        collect_base_action(all_actions, norm_episode_all_base_actions)
                 else:
                     raise NotImplementedError
 
@@ -339,9 +380,20 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
                 raw_action = raw_action.squeeze(0).cpu().numpy()
                 action = post_process(raw_action)
                 target_qpos = action[:-2]
-                base_action = action[-2:]
-                base_action = calibrate_linear_vel(base_action, c=0.19)
-                # base_action = postprocess_base_action(base_action)
+
+                if use_actuator_net:
+                    assert(not temporal_agg)
+                    if t % prediction_len == 0:
+                        offset_start_ts = t + history_len
+                        actuator_net_in = np.array(norm_episode_all_base_actions[offset_start_ts - history_len: offset_start_ts + future_len])
+                        actuator_net_in = torch.from_numpy(actuator_net_in).float().unsqueeze(dim=0).cuda()
+                        pred = actuator_network(actuator_net_in)
+                        base_action_chunk = actuator_unnorm(pred.detach().cpu().numpy()[0])
+                    base_action = base_action_chunk[t % prediction_len]
+                else:
+                    base_action = action[-2:]
+                    # base_action = calibrate_linear_vel(base_action, c=0.19)
+                    # base_action = postprocess_base_action(base_action)
 
                 ### step the environment
                 if real_robot:
@@ -509,6 +561,10 @@ if __name__ == '__main__':
     parser.add_argument('--save_every', action='store', type=int, default=500, help='save_every', required=False)
     parser.add_argument('--resume_ckpt_path', action='store', type=str, help='resume_ckpt_path', required=False)
     parser.add_argument('--skip_mirrored_data', action='store_true')
+    parser.add_argument('--actuator_network_dir', action='store', type=str, help='actuator_network_dir', required=False)
+    parser.add_argument('--history_len', action='store', type=int)
+    parser.add_argument('--future_len', action='store', type=int)
+    parser.add_argument('--prediction_len', action='store', type=int)
 
     # for ACT
     parser.add_argument('--kl_weight', action='store', type=int, help='KL Weight', required=False)

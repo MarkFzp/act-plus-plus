@@ -42,6 +42,7 @@ def main():
     dataset_dir = '/scr/tonyzhao/compressed_datasets/aloha_mobile_fork/' if os.getlogin() == 'tonyzhao' else '/home/zfu/data/aloha_mobile_fork/'
     #########################################################
     assert(history_len + future_len >= prediction_len)
+    assert(future_len % prediction_len == 0)
 
     wandb.init(project="mobile-aloha2", reinit=True, entity="mobile-aloha2", name=expr_name) # mode='disabled', 
 
@@ -134,14 +135,14 @@ def main():
         wandb.log(forward_dict, step=step) # not great, make training 1-2% slower
 
         if step % save_every == 0:
-            ckpt_path = os.path.join(ckpt_dir, f'policy_step_{step}.ckpt')
+            ckpt_path = os.path.join(ckpt_dir, f'actuator_net_step_{step}.ckpt')
             torch.save(policy.state_dict(), ckpt_path)
 
-    ckpt_path = os.path.join(ckpt_dir, f'policy_last.ckpt')
+    ckpt_path = os.path.join(ckpt_dir, f'actuator_net_last.ckpt')
     torch.save(policy.state_dict(), ckpt_path)
 
     best_step, min_val_loss, best_state_dict = best_ckpt_info
-    ckpt_path = os.path.join(ckpt_dir, f'policy_step_{best_step}.ckpt')
+    ckpt_path = os.path.join(ckpt_dir, f'actuator_net_step_{best_step}.ckpt')
     torch.save(best_state_dict, ckpt_path)
     print(f'Training finished:\nval loss {min_val_loss:.6f} at step {best_step}')
 

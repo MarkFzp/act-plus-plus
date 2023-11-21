@@ -75,6 +75,10 @@ def get_args_parser():
     parser.add_argument('--resume_ckpt_path', action='store', type=str, help='load_ckpt_path', required=False)
     parser.add_argument('--no_encoder', action='store_true')
     parser.add_argument('--skip_mirrored_data', action='store_true')
+    parser.add_argument('--actuator_network_dir', action='store', type=str, help='actuator_network_dir', required=False)
+    parser.add_argument('--history_len', action='store', type=int)
+    parser.add_argument('--future_len', action='store', type=int)
+    parser.add_argument('--prediction_len', action='store', type=int)
     
     return parser
 
