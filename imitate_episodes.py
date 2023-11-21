@@ -120,7 +120,7 @@ def main(args):
         ckpt_names = [f'policy_last.ckpt']
         results = []
         for ckpt_name in ckpt_names:
-            success_rate, avg_return = eval_bc(config, ckpt_name, save_episode=True, num_rollouts=1)
+            success_rate, avg_return = eval_bc(config, ckpt_name, save_episode=True, num_rollouts=10)
             # wandb.log({'success_rate': success_rate, 'avg_return': avg_return})
             results.append([ckpt_name, success_rate, avg_return])
 
@@ -237,6 +237,8 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
     episode_returns = []
     highest_rewards = []
     for rollout_id in range(num_rollouts):
+        if real_robot:
+            e()
         rollout_id += 0
         ### set task
         if 'sim_transfer_cube' in task_name:
@@ -316,7 +318,7 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
                 action = post_process(raw_action)
                 target_qpos = action[:-2]
                 base_action = action[-2:]
-                base_action = calibrate_linear_vel(base_action, c=0.19)
+                # base_action = calibrate_linear_vel(base_action, c=0.19)
                 # base_action = postprocess_base_action(base_action)
 
                 ### step the environment
@@ -342,8 +344,8 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
         highest_rewards.append(episode_highest_reward)
         print(f'Rollout {rollout_id}\n{episode_return=}, {episode_highest_reward=}, {env_max_reward=}, Success: {episode_highest_reward==env_max_reward}')
 
-        if save_episode:
-            save_videos(image_list, DT, video_path=os.path.join(ckpt_dir, f'video{rollout_id}.mp4'))
+        # if save_episode:
+        #     save_videos(image_list, DT, video_path=os.path.join(ckpt_dir, f'video{rollout_id}.mp4'))
 
     success_rate = np.mean(np.array(highest_rewards) == env_max_reward)
     avg_return = np.mean(episode_returns)
