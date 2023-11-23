@@ -258,8 +258,8 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
         with open(actuator_stats_path, 'rb') as f:
             actuator_stats = pickle.load(f)
         
-        actuator_unnorm = lambda x: x * actuator_stats['action_std'] + actuator_stats['action_mean']
-        actuator_norm = lambda x: (x - actuator_stats['action_mean']) / actuator_stats['action_std']
+        actuator_unnorm = lambda x: x * actuator_stats['commanded_speed_std'] + actuator_stats['commanded_speed_std']
+        actuator_norm = lambda x: (x - actuator_stats['observed_speed_mean']) / actuator_stats['observed_speed_mean']
         def collect_base_action(all_actions, norm_episode_all_base_actions):
             post_processed_actions = post_process(all_actions.squeeze(0).cpu().numpy())
             norm_episode_all_base_actions += actuator_norm(post_processed_actions[:, -2:]).tolist()
