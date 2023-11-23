@@ -9,8 +9,9 @@ from itertools import repeat
 from tqdm import tqdm
 from einops import rearrange
 import wandb
+import time
 
-from constants import DT
+from constants import FPS
 from constants import PUPPET_GRIPPER_JOINT_OPEN
 from utils import load_data # data functions
 from utils import sample_box_pose, sample_insertion_pose # robot functions
@@ -245,7 +246,7 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
         history_len = actuator_config['history_len']
         actuator_network_dir = actuator_config['actuator_network_dir']
 
-        from train_actuator_network import ActuatorNetwork
+        from act.train_actuator_network import ActuatorNetwork
         actuator_network = ActuatorNetwork(prediction_len)
         actuator_network_path = os.path.join(actuator_network_dir, 'actuator_net_last.ckpt')
         loading_status = actuator_network.load_state_dict(torch.load(actuator_network_path))
@@ -318,7 +319,10 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
         rewards = []
         norm_episode_all_base_actions = [actuator_norm(np.zeros(history_len, 2)).tolist()]
         with torch.inference_mode():
+            time0 = time.time()
+            DT = 1 / FPS
             for t in range(max_timesteps):
+                time1 = time.time()
                 ### update onscreen render and wait for DT
                 if onscreen_render:
                     image = env._physics.render(height=480, width=640, camera_id=onscreen_cam)
@@ -407,6 +411,7 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
                 qpos_list.append(qpos_numpy)
                 target_qpos_list.append(target_qpos)
                 rewards.append(ts.reward)
+                time.sleep(max(0, DT - (time.time() - time1)))
 
             plt.close()
         if real_robot:
