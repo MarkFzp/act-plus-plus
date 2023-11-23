@@ -57,6 +57,7 @@ SIM_TASK_CONFIGS = {
 
 ### Simulation envs fixed constants
 DT = 0.02
+FPS = 50
 JOINT_NAMES = ["waist", "shoulder", "elbow", "forearm_roll", "wrist_angle", "wrist_rotate"]
 START_ARM_POSE = [0, -0.96, 1.16, 0, -0.3, 0, 0.02239, -0.02239,  0, -0.96, 1.16, 0, -0.3, 0, 0.02239, -0.02239]
 
