@@ -114,6 +114,42 @@ CUDA_VISIBLE_DEVICES=1 python3 imitate_episodes.py \
 --num_steps 100000 --eval_every 2000 --validate_every 2000 --save_every 2000
 
 
+# use EMA and train for longer (code changes)
+
+conda activate mobile
+export MUJOCO_GL=egl
+cd /home/tonyzhao/Research/act-plus-plus
+CUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \
+--task_name sim_transfer_cube_scripted \
+--ckpt_dir /scr/tonyzhao/train_logs/cube_scripted_diffusion_sweep_3_ema \
+--policy_class Diffusion --chunk_size 32 \
+--batch_size 32 --lr 1e-4 --seed 0 \
+--num_steps 300000 --eval_every 6000 --validate_every 6000 --save_every 6000
+
+# code regression test: no EMA
+conda activate mobile
+export MUJOCO_GL=egl
+cd /home/tonyzhao/Research/act-plus-plus
+CUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \
+--task_name sim_transfer_cube_scripted \
+--ckpt_dir /scr/tonyzhao/train_logs/cube_scripted_diffusion_sweep_4_regression_no_ema \
+--policy_class Diffusion --chunk_size 32 \
+--batch_size 32 --lr 1e-4 --seed 0 \
+--num_steps 300000 --eval_every 6000 --validate_every 6000 --save_every 6000
+
+conda activate mobile
+export MUJOCO_GL=egl
+cd /home/tonyzhao/Research/act-plus-plus
+CUDA_VISIBLE_DEVICES=1 python3 imitate_episodes.py \
+--task_name sim_transfer_cube_scripted \
+--ckpt_dir /scr/tonyzhao/train_logs/cube_scripted_diffusion_sweep_5_ema_again \
+--policy_class Diffusion --chunk_size 32 \
+--batch_size 32 --lr 1e-4 --seed 0 \
+--num_steps 300000 --eval_every 6000 --validate_every 6000 --save_every 6000
+
+
+
+
 
 ---------------------------------------------------------------------------------------
 

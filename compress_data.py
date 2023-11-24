@@ -26,7 +26,10 @@ def compress_dataset(input_dataset_path, output_dataset_path):
         # Create the compressed dataset
         with h5py.File(output_dataset_path, 'w') as outfile:
 
-            outfile.attrs['sim'] = infile.attrs['sim']
+            if 'sim' in infile.attrs:
+                outfile.attrs['sim'] = infile.attrs['sim']
+            else:
+                outfile.attrs['sim'] = False
             outfile.attrs['compress'] = True
 
             # Copy non-image data directly
