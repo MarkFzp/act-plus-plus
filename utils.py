@@ -254,7 +254,7 @@ def load_data(dataset_dir_l, name_filter, camera_names, batch_size_train, batch_
     shuffled_episode_ids_0 = np.random.permutation(num_episodes_0)
     train_episode_ids_0 = shuffled_episode_ids_0[:int(train_ratio * num_episodes_0)]
     val_episode_ids_0 = shuffled_episode_ids_0[int(train_ratio * num_episodes_0):]
-    train_episode_ids_l = [train_episode_ids_0] + [np.arange(num_episodes, dtype=np.int) + num_episodes_cumsum[idx] for idx, num_episodes in enumerate(num_episodes_l[1:])]
+    train_episode_ids_l = [train_episode_ids_0] + [np.arange(num_episodes) + num_episodes_cumsum[idx] for idx, num_episodes in enumerate(num_episodes_l[1:])]
     val_episode_ids_l = [val_episode_ids_0]
     train_episode_ids = np.concatenate(train_episode_ids_l)
     val_episode_ids = np.concatenate(val_episode_ids_l)
@@ -275,6 +275,7 @@ def load_data(dataset_dir_l, name_filter, camera_names, batch_size_train, batch_
     elif type(stats_dir_l) == str:
         stats_dir_l = [stats_dir_l]
     norm_stats, _ = get_norm_stats(flatten_list([find_all_hdf5(stats_dir, skip_mirrored_data) for stats_dir in stats_dir_l]))
+    print(f'Norm stats from: {stats_dir_l}')
 
     batch_sampler_train = BatchSampler(batch_size_train, train_episode_len_l, sample_weights)
     batch_sampler_val = BatchSampler(batch_size_val, val_episode_len_l, None)
@@ -282,8 +283,8 @@ def load_data(dataset_dir_l, name_filter, camera_names, batch_size_train, batch_
     # construct dataset and dataloader
     train_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, train_episode_ids, train_episode_len, chunk_size, policy_class)
     val_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, val_episode_ids, val_episode_len, chunk_size, policy_class)
-    train_dataloader = DataLoader(train_dataset, batch_sampler=batch_sampler_train, pin_memory=True, num_workers=1, prefetch_factor=1)
-    val_dataloader = DataLoader(val_dataset, batch_sampler=batch_sampler_val, pin_memory=True, num_workers=1, prefetch_factor=1)
+    train_dataloader = DataLoader(train_dataset, batch_sampler=batch_sampler_train, pin_memory=True, num_workers=2, prefetch_factor=2)
+    val_dataloader = DataLoader(val_dataset, batch_sampler=batch_sampler_val, pin_memory=True, num_workers=2, prefetch_factor=2)
 
     return train_dataloader, val_dataloader, norm_stats, train_dataset.is_sim
 
