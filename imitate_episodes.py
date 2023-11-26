@@ -495,7 +495,7 @@ def train_bc(train_dataloader, val_dataloader, config):
                 for batch_idx, data in enumerate(val_dataloader):
                     forward_dict = forward_pass(data, policy)
                     validation_dicts.append(forward_dict)
-                    if batch_idx > 20:
+                    if batch_idx > 50:
                         break
 
                 validation_summary = compute_dict_mean(validation_dicts)
