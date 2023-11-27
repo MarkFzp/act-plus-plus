@@ -10,6 +10,9 @@ from torch.utils.data import TensorDataset, DataLoader
 import IPython
 e = IPython.embed
 
+def flatten_list(l):
+    return [item for sublist in l for item in sublist]
+
 class EpisodicDataset(torch.utils.data.Dataset):
     def __init__(self, dataset_path_list, camera_names, norm_stats, episode_ids, episode_len, chunk_size, policy_class):
         super(EpisodicDataset).__init__()
@@ -25,8 +28,8 @@ class EpisodicDataset(torch.utils.data.Dataset):
         self.__getitem__(0) # initialize self.is_sim
         self.is_sim = False
 
-    def __len__(self):
-        return sum(self.episode_len)
+    # def __len__(self):
+    #     return sum(self.episode_len)
 
     def _locate_transition(self, index):
         assert index < self.cumulative_len[-1]
@@ -82,7 +85,6 @@ class EpisodicDataset(torch.utils.data.Dataset):
             is_pad = np.zeros(self.max_episode_len)
             is_pad[action_len:] = 1
 
-            padded_action = padded_action[:self.chunk_size]
             padded_action = padded_action[:self.chunk_size]
 
             # new axis for different cameras
@@ -179,33 +181,64 @@ def find_all_hdf5(dataset_dir, skip_mirrored_data):
     print(f'Found {len(hdf5_files)} hdf5 files')
     return hdf5_files
 
+def BatchSampler(batch_size, episode_len_l, sample_weights):
+    sample_probs = np.array(sample_weights) / np.sum(sample_weights) if sample_weights is not None else None
+    sum_dataset_len_l = np.cumsum([0] + [np.sum(episode_len) for episode_len in episode_len_l])
+    while True:
+        batch = []
+        for _ in range(batch_size):
+            episode_idx = np.random.choice(len(episode_len_l), p=sample_probs)
+            step_idx = np.random.randint(sum_dataset_len_l[episode_idx], sum_dataset_len_l[episode_idx + 1])
+            batch.append(step_idx)
+        yield batch
 
-def load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, chunk_size, skip_mirrored_data=False, load_pretrain=False, policy_class=None):
-    dataset_path_list = find_all_hdf5(dataset_dir, skip_mirrored_data)
+def load_data(dataset_dir_l, name_filter, camera_names, batch_size_train, batch_size_val, chunk_size, skip_mirrored_data=False, load_pretrain=False, policy_class=None, stats_dir_l=None, sample_weights=None, train_ratio=0.99):
+    if type(dataset_dir_l) == str:
+        dataset_dir_l = [dataset_dir_l]
+    dataset_path_list_list = [find_all_hdf5(dataset_dir, skip_mirrored_data) for dataset_dir in dataset_dir_l]
+    num_episodes_0 = len(dataset_path_list_list[0])
+    dataset_path_list = flatten_list(dataset_path_list_list)
     dataset_path_list = [n for n in dataset_path_list if name_filter(n)]
-    num_episodes = len(dataset_path_list)
+    num_episodes_l = [len(dataset_path_list) for dataset_path_list in dataset_path_list_list]
+    num_episodes_cumsum = np.cumsum(num_episodes_l)
 
-    # obtain train test split
-    train_ratio = 0.995
-    shuffled_episode_ids = np.random.permutation(num_episodes)
-    train_episode_ids = shuffled_episode_ids[:int(train_ratio * num_episodes)]
-    val_episode_ids = shuffled_episode_ids[int(train_ratio * num_episodes):]
-    print(f'\n\nData from: {dataset_dir}\n- Train on {len(train_episode_ids)} episodes\n- Test on {len(val_episode_ids)} episodes\n\n')
+    # obtain train test split on dataset_dir_l[0]
+    shuffled_episode_ids_0 = np.random.permutation(num_episodes_0)
+    train_episode_ids_0 = shuffled_episode_ids_0[:int(train_ratio * num_episodes_0)]
+    val_episode_ids_0 = shuffled_episode_ids_0[int(train_ratio * num_episodes_0):]
+    train_episode_ids_l = [train_episode_ids_0] + [np.arange(num_episodes) + num_episodes_cumsum[idx] for idx, num_episodes in enumerate(num_episodes_l[1:])]
+    val_episode_ids_l = [val_episode_ids_0]
+    train_episode_ids = np.concatenate(train_episode_ids_l)
+    val_episode_ids = np.concatenate(val_episode_ids_l)
+    print(f'\n\nData from: {dataset_dir_l}\n- Train on {[len(x) for x in train_episode_ids_l]} episodes\n- Test on {[len(x) for x in val_episode_ids_l]} episodes\n\n')
 
     # obtain normalization stats for qpos and action
     # if load_pretrain:
     #     with open(os.path.join('/home/zfu/interbotix_ws/src/act/ckpts/pretrain_all', 'dataset_stats.pkl'), 'rb') as f:
     #         norm_stats = pickle.load(f)
     #     print('Loaded pretrain dataset stats')
-    norm_stats, all_episode_len = get_norm_stats(dataset_path_list)
-    train_episode_len = [all_episode_len[i] for i in train_episode_ids]
-    val_episode_len = [all_episode_len[i] for i in val_episode_ids]
+    _, all_episode_len = get_norm_stats(dataset_path_list)
+    train_episode_len_l = [[all_episode_len[i] for i in train_episode_ids] for train_episode_ids in train_episode_ids_l]
+    val_episode_len_l = [[all_episode_len[i] for i in val_episode_ids] for val_episode_ids in val_episode_ids_l]
+    train_episode_len = flatten_list(train_episode_len_l)
+    val_episode_len = flatten_list(val_episode_len_l)
+    if stats_dir_l is None:
+        stats_dir_l = dataset_dir_l
+    elif type(stats_dir_l) == str:
+        stats_dir_l = [stats_dir_l]
+    norm_stats, _ = get_norm_stats(flatten_list([find_all_hdf5(stats_dir, skip_mirrored_data) for stats_dir in stats_dir_l]))
+    print(f'Norm stats from: {stats_dir_l}')
+
+    batch_sampler_train = BatchSampler(batch_size_train, train_episode_len_l, sample_weights)
+    batch_sampler_val = BatchSampler(batch_size_val, val_episode_len_l, None)
+
+    # print(f'train_episode_len: {train_episode_len}, val_episode_len: {val_episode_len}, train_episode_ids: {train_episode_ids}, val_episode_ids: {val_episode_ids}')
 
     # construct dataset and dataloader
     train_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, train_episode_ids, train_episode_len, chunk_size, policy_class)
     val_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, val_episode_ids, val_episode_len, chunk_size, policy_class)
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True, pin_memory=True, num_workers=1, prefetch_factor=1)
-    val_dataloader = DataLoader(val_dataset, batch_size=batch_size_val, shuffle=True, pin_memory=True, num_workers=1, prefetch_factor=1)
+    train_dataloader = DataLoader(train_dataset, batch_sampler=batch_sampler_train, pin_memory=True, num_workers=2, prefetch_factor=2)
+    val_dataloader = DataLoader(val_dataset, batch_sampler=batch_sampler_val, pin_memory=True, num_workers=2, prefetch_factor=2)
 
     return train_dataloader, val_dataloader, norm_stats, train_dataset.is_sim
 
