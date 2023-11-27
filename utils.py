@@ -231,11 +231,11 @@ def preprocess_base_action(base_action):
 
 def postprocess_base_action(base_action):
     linear_vel, angular_vel = base_action
-    linear_vel *= 0.8
-    angular_vel *= 0.70
+    linear_vel *= 1.0
+    angular_vel *= 1.0
     # angular_vel = 0
-    if np.abs(linear_vel) < 0.05:
-        linear_vel = 0
+    # if np.abs(linear_vel) < 0.05:
+    #     linear_vel = 0
     return np.array([linear_vel, angular_vel])
 
 ### env utils

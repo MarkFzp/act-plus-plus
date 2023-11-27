@@ -240,29 +240,29 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
     stats_path = os.path.join(ckpt_dir, f'dataset_stats.pkl')
     with open(stats_path, 'rb') as f:
         stats = pickle.load(f)
-    if use_actuator_net:
-        prediction_len = actuator_config['prediction_len']
-        future_len = actuator_config['future_len']
-        history_len = actuator_config['history_len']
-        actuator_network_dir = actuator_config['actuator_network_dir']
+    # if use_actuator_net:
+    #     prediction_len = actuator_config['prediction_len']
+    #     future_len = actuator_config['future_len']
+    #     history_len = actuator_config['history_len']
+    #     actuator_network_dir = actuator_config['actuator_network_dir']
 
-        from act.train_actuator_network import ActuatorNetwork
-        actuator_network = ActuatorNetwork(prediction_len)
-        actuator_network_path = os.path.join(actuator_network_dir, 'actuator_net_last.ckpt')
-        loading_status = actuator_network.load_state_dict(torch.load(actuator_network_path))
-        actuator_network.eval()
-        actuator_network.cuda()
-        print(f'Loaded actuator network from: {actuator_network_path}, {loading_status}')
+    #     from act.train_actuator_network import ActuatorNetwork
+    #     actuator_network = ActuatorNetwork(prediction_len)
+    #     actuator_network_path = os.path.join(actuator_network_dir, 'actuator_net_last.ckpt')
+    #     loading_status = actuator_network.load_state_dict(torch.load(actuator_network_path))
+    #     actuator_network.eval()
+    #     actuator_network.cuda()
+    #     print(f'Loaded actuator network from: {actuator_network_path}, {loading_status}')
 
-        actuator_stats_path  = os.path.join(actuator_network_dir, 'actuator_net_stats.pkl')
-        with open(actuator_stats_path, 'rb') as f:
-            actuator_stats = pickle.load(f)
+    #     actuator_stats_path  = os.path.join(actuator_network_dir, 'actuator_net_stats.pkl')
+    #     with open(actuator_stats_path, 'rb') as f:
+    #         actuator_stats = pickle.load(f)
         
-        actuator_unnorm = lambda x: x * actuator_stats['commanded_speed_std'] + actuator_stats['commanded_speed_std']
-        actuator_norm = lambda x: (x - actuator_stats['observed_speed_mean']) / actuator_stats['observed_speed_mean']
-        def collect_base_action(all_actions, norm_episode_all_base_actions):
-            post_processed_actions = post_process(all_actions.squeeze(0).cpu().numpy())
-            norm_episode_all_base_actions += actuator_norm(post_processed_actions[:, -2:]).tolist()
+    #     actuator_unnorm = lambda x: x * actuator_stats['commanded_speed_std'] + actuator_stats['commanded_speed_std']
+    #     actuator_norm = lambda x: (x - actuator_stats['observed_speed_mean']) / actuator_stats['observed_speed_mean']
+    #     def collect_base_action(all_actions, norm_episode_all_base_actions):
+    #         post_processed_actions = post_process(all_actions.squeeze(0).cpu().numpy())
+    #         norm_episode_all_base_actions += actuator_norm(post_processed_actions[:, -2:]).tolist()
 
     pre_process = lambda s_qpos: (s_qpos - stats['qpos_mean']) / stats['qpos_std']
     if policy_class == 'Diffusion':
@@ -285,6 +285,9 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
     if temporal_agg:
         query_frequency = 1
         num_queries = policy_config['num_queries']
+    if real_robot:
+        BASE_DELAY = 15
+        query_frequency -= BASE_DELAY
 
     max_timesteps = int(max_timesteps * 1) # may increase for real-world tasks
 
@@ -317,10 +320,12 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
         qpos_list = []
         target_qpos_list = []
         rewards = []
-        norm_episode_all_base_actions = [actuator_norm(np.zeros(history_len, 2)).tolist()]
+        # if use_actuator_net:
+        #     norm_episode_all_base_actions = [actuator_norm(np.zeros(history_len, 2)).tolist()]
         with torch.inference_mode():
             time0 = time.time()
             DT = 1 / FPS
+            culmulated_delay = 0 
             for t in range(max_timesteps):
                 time1 = time.time()
                 ### update onscreen render and wait for DT
@@ -330,6 +335,7 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
                     plt.pause(DT)
 
                 ### process previous timestep to get qpos and image_list
+                time2 = time.time()
                 obs = ts.observation
                 if 'images' in obs:
                     image_list.append(obs['images'])
@@ -339,9 +345,19 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
                 qpos = pre_process(qpos_numpy)
                 qpos = torch.from_numpy(qpos).float().cuda().unsqueeze(0)
                 qpos_history[:, t] = qpos
-                curr_image = get_image(ts, camera_names)
+                if t % query_frequency == 0:
+                    curr_image = get_image(ts, camera_names)
+                # print('get image: ', time.time() - time2)
+
+                if t == 0:
+                    # warm up
+                    for _ in range(10):
+                        policy(qpos, curr_image)
+                    print('network warm up done')
+                    time1 = time.time()
 
                 ### query policy
+                time3 = time.time()
                 if config['policy_class'] == "ACT":
                     if t % query_frequency == 0:
                         if vq:
@@ -354,8 +370,10 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
                         else:
                             # e()
                             all_actions = policy(qpos, curr_image)
-                        if use_actuator_net:
-                            collect_base_action(all_actions, norm_episode_all_base_actions)
+                        # if use_actuator_net:
+                        #     collect_base_action(all_actions, norm_episode_all_base_actions)
+                        if real_robot:
+                            all_actions = torch.cat([all_actions[:, :-BASE_DELAY, :-2], all_actions[:, BASE_DELAY:, -2:]], dim=2)
                     if temporal_agg:
                         all_time_actions[[t], t:t+num_queries] = all_actions
                         actions_for_curr_step = all_time_actions[:, t]
@@ -368,51 +386,67 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
                         raw_action = (actions_for_curr_step * exp_weights).sum(dim=0, keepdim=True)
                     else:
                         raw_action = all_actions[:, t % query_frequency]
+                        # if t % query_frequency == query_frequency - 1:
+                        #     # zero out base actions to avoid overshooting
+                        #     raw_action[0, -2:] = 0
                 elif config['policy_class'] == "Diffusion":
                     if t % query_frequency == 0:
                         all_actions = policy(qpos, curr_image)
-                        if use_actuator_net:
-                            collect_base_action(all_actions, norm_episode_all_base_actions)
+                        # if use_actuator_net:
+                        #     collect_base_action(all_actions, norm_episode_all_base_actions)
                     raw_action = all_actions[:, t % query_frequency]
                 elif config['policy_class'] == "CNNMLP":
                     raw_action = policy(qpos, curr_image)
                     all_actions = raw_action.unsqueeze(0)
-                    if use_actuator_net:
-                        collect_base_action(all_actions, norm_episode_all_base_actions)
+                    # if use_actuator_net:
+                    #     collect_base_action(all_actions, norm_episode_all_base_actions)
                 else:
                     raise NotImplementedError
+                # print('query policy: ', time.time() - time3)
 
                 ### post-process actions
+                time4 = time.time()
                 raw_action = raw_action.squeeze(0).cpu().numpy()
                 action = post_process(raw_action)
                 target_qpos = action[:-2]
 
-                if use_actuator_net:
-                    assert(not temporal_agg)
-                    if t % prediction_len == 0:
-                        offset_start_ts = t + history_len
-                        actuator_net_in = np.array(norm_episode_all_base_actions[offset_start_ts - history_len: offset_start_ts + future_len])
-                        actuator_net_in = torch.from_numpy(actuator_net_in).float().unsqueeze(dim=0).cuda()
-                        pred = actuator_network(actuator_net_in)
-                        base_action_chunk = actuator_unnorm(pred.detach().cpu().numpy()[0])
-                    base_action = base_action_chunk[t % prediction_len]
-                else:
-                    base_action = action[-2:]
-                    # base_action = calibrate_linear_vel(base_action, c=0.19)
-                    # base_action = postprocess_base_action(base_action)
+                # if use_actuator_net:
+                #     assert(not temporal_agg)
+                #     if t % prediction_len == 0:
+                #         offset_start_ts = t + history_len
+                #         actuator_net_in = np.array(norm_episode_all_base_actions[offset_start_ts - history_len: offset_start_ts + future_len])
+                #         actuator_net_in = torch.from_numpy(actuator_net_in).float().unsqueeze(dim=0).cuda()
+                #         pred = actuator_network(actuator_net_in)
+                #         base_action_chunk = actuator_unnorm(pred.detach().cpu().numpy()[0])
+                #     base_action = base_action_chunk[t % prediction_len]
+                # else:
+                base_action = action[-2:]
+                # base_action = calibrate_linear_vel(base_action, c=0.19)
+                # base_action = postprocess_base_action(base_action)
+                # print('post process: ', time.time() - time4)
 
                 ### step the environment
+                time5 = time.time()
                 if real_robot:
                     ts = env.step(target_qpos, base_action)
                 else:
                     ts = env.step(target_qpos)
+                # print('step env: ', time.time() - time5)
 
                 ### for visualization
                 qpos_list.append(qpos_numpy)
                 target_qpos_list.append(target_qpos)
                 rewards.append(ts.reward)
-                time.sleep(max(0, DT - (time.time() - time1)))
+                duration = time.time() - time1
+                time.sleep(max(0, DT - duration))
+                # time.sleep(max(0, DT - duration - culmulated_delay))
+                if duration >= DT:
+                    culmulated_delay += (duration - DT)
+                    print(f'Warning: step duration: {duration:.3f} s at step {t} longer than DT: {DT} s, culmulated delay: {culmulated_delay:.3f} s')
+                # else:
+                #     culmulated_delay = max(0, culmulated_delay - (DT - duration))
 
+            print(f'Avg fps {max_timesteps / (time.time() - time0)}')
             plt.close()
         if real_robot:
             move_grippers([env.puppet_bot_left, env.puppet_bot_right], [PUPPET_GRIPPER_JOINT_OPEN] * 2, move_time=0.5)  # open
