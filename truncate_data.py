@@ -13,6 +13,7 @@ from tqdm import tqdm
 DT = 0.02
 JOINT_NAMES = ["waist", "shoulder", "elbow", "forearm_roll", "wrist_angle", "wrist_rotate"]
 STATE_NAMES = JOINT_NAMES + ["gripper"]
+TRUNCATE_LEN = 2250
 
 
 def compress_dataset(input_dataset_path, output_dataset_path):
@@ -31,59 +32,34 @@ def compress_dataset(input_dataset_path, output_dataset_path):
 
             # Copy non-image data directly
             for key in infile.keys():
-                if key != 'observations':
-                    outfile.copy(infile[key], key)
-
-            obs_group = infile['observations']
+                if key != 'observations' and key != 'compress_len':
+                    data = infile[key][:TRUNCATE_LEN]
+                    out_data = outfile.create_dataset(key, (TRUNCATE_LEN, data.shape[1]))
+                    out_data[:] = data
+            
+            data_compress_len = infile['compress_len']
+            out_data_compress_len = outfile.create_dataset('compress_len', data_compress_len.shape)
+            out_data_compress_len[:] = data_compress_len
 
             # Create observation group in the output
+            obs_group = infile['observations']
             out_obs_group = outfile.create_group('observations')
-
-            # Copy non-image data in observations directly
             for key in obs_group.keys():
                 if key != 'images':
-                    out_obs_group.copy(obs_group[key], key)
+                    data = obs_group[key][:TRUNCATE_LEN]
+                    out_data = out_obs_group.create_dataset(key, (TRUNCATE_LEN, data.shape[1]))
+                    out_data[:] = data
 
             image_group = obs_group['images']
             out_image_group = out_obs_group.create_group('images')
 
-            # JPEG compression parameters
-            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 50]
-
-            compressed_lens = []  # List to store compressed lengths for each camera
-
             for cam_name in image_group.keys():
-                if "_depth" in cam_name:  # Depth images are not compressed
-                    out_image_group.copy(image_group[cam_name], cam_name)
-                else:
-                    images = image_group[cam_name]
-                    compressed_images = []
-                    cam_compressed_lens = []  # List to store compressed lengths for this camera
+                data = image_group[cam_name][:TRUNCATE_LEN]
+                out_data = out_image_group.create_dataset(cam_name, (TRUNCATE_LEN, data.shape[1]), dtype='uint8')
+                out_data[:] = data
+                
 
-                    # Compress each image
-                    for image in images:
-                        result, encoded_image = cv2.imencode('.jpg', image, encode_param)
-                        compressed_images.append(encoded_image)
-                        cam_compressed_lens.append(len(encoded_image))  # Store the length
-
-                    compressed_lens.append(cam_compressed_lens)
-
-                    # Find the maximum length of the compressed images
-                    max_len = max(len(img) for img in compressed_images)
-
-                    # Create dataset to store compressed images
-                    compressed_dataset = out_image_group.create_dataset(cam_name, (len(compressed_images), max_len), dtype='uint8')
-
-                    # Store compressed images
-                    for i, img in enumerate(compressed_images):
-                        compressed_dataset[i, :len(img)] = img
-
-            # Save the compressed lengths to the HDF5 file
-            compressed_lens = np.array(compressed_lens)
-            _ = outfile.create_dataset('compress_len', compressed_lens.shape)
-            outfile['/compress_len'][...] = compressed_lens
-
-    print(f"Compressed dataset saved to {output_dataset_path}")
+    print(f"Truncated dataset saved to {output_dataset_path}")
 
 
 def save_videos(video, dt, video_path=None):
@@ -165,11 +141,11 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    output_dataset_dir = args.dataset_dir + '_compressed'
+    output_dataset_dir = args.dataset_dir + '_truncated'
     os.makedirs(output_dataset_dir, exist_ok=True)
 
     # Iterate over each file in the directory
-    for filename in tqdm(os.listdir(args.dataset_dir), desc="Compressing data"):
+    for filename in tqdm(os.listdir(args.dataset_dir), desc="Truncating data"):
         if filename.endswith('.hdf5'):
             input_path = os.path.join(args.dataset_dir, filename)
             output_path = os.path.join(output_dataset_dir, filename)
