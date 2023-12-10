@@ -225,7 +225,7 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
     # load policy and stats
     ckpt_path = os.path.join(ckpt_dir, ckpt_name)
     policy = make_policy(policy_class, policy_config)
-    loading_status = policy.load_state_dict(torch.load(ckpt_path))
+    loading_status = policy.deserialize(torch.load(ckpt_path))
     print(loading_status)
     policy.cuda()
     policy.eval()
@@ -234,7 +234,7 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
         vq_class = config['policy_config']['vq_class']
         latent_model = Latent_Model_Transformer(vq_dim, vq_dim, vq_class)
         latent_model_ckpt_path = os.path.join(ckpt_dir, 'latent_model_last.ckpt')
-        latent_model.load_state_dict(torch.load(latent_model_ckpt_path))
+        latent_model.deserialize(torch.load(latent_model_ckpt_path))
         latent_model.eval()
         latent_model.cuda()
         print(f'Loaded policy from: {ckpt_path}, latent model from: {latent_model_ckpt_path}')
@@ -506,10 +506,10 @@ def train_bc(train_dataloader, val_dataloader, config):
 
     policy = make_policy(policy_class, policy_config)
     if config['load_pretrain']:
-        loading_status = policy.load_state_dict(torch.load(os.path.join('/home/zfu/interbotix_ws/src/act/ckpts/pretrain_all', 'policy_step_50000_seed_0.ckpt')))
+        loading_status = policy.deserialize(torch.load(os.path.join('/home/zfu/interbotix_ws/src/act/ckpts/pretrain_all', 'policy_step_50000_seed_0.ckpt')))
         print(f'loaded! {loading_status}')
     if config['resume_ckpt_path'] is not None:
-        loading_status = policy.load_state_dict(torch.load(config['resume_ckpt_path']))
+        loading_status = policy.deserialize(torch.load(config['resume_ckpt_path']))
         print(f'Resume policy from: {config["resume_ckpt_path"]}, Status: {loading_status}')
     policy.cuda()
     optimizer = make_optimizer(policy_class, policy)
@@ -537,7 +537,7 @@ def train_bc(train_dataloader, val_dataloader, config):
                 epoch_val_loss = validation_summary['loss']
                 if epoch_val_loss < min_val_loss:
                     min_val_loss = epoch_val_loss
-                    best_ckpt_info = (step, min_val_loss, deepcopy(policy.state_dict()))
+                    best_ckpt_info = (step, min_val_loss, deepcopy(policy.serialize()))
             for k in list(validation_summary.keys()):
                 validation_summary[f'val_{k}'] = validation_summary.pop(k)            
             wandb.log(validation_summary, step=step)
@@ -552,7 +552,7 @@ def train_bc(train_dataloader, val_dataloader, config):
             # first save then eval
             ckpt_name = f'policy_step_{step}_seed_{seed}.ckpt'
             ckpt_path = os.path.join(ckpt_dir, ckpt_name)
-            torch.save(policy.state_dict(), ckpt_path)
+            torch.save(policy.serialize(), ckpt_path)
             success, _ = eval_bc(config, ckpt_name, save_episode=True, num_rollouts=10)
             wandb.log({'success': success}, step=step)
 
@@ -569,10 +569,10 @@ def train_bc(train_dataloader, val_dataloader, config):
 
         if step % save_every == 0:
             ckpt_path = os.path.join(ckpt_dir, f'policy_step_{step}_seed_{seed}.ckpt')
-            torch.save(policy.state_dict(), ckpt_path)
+            torch.save(policy.serialize(), ckpt_path)
 
     ckpt_path = os.path.join(ckpt_dir, f'policy_last.ckpt')
-    torch.save(policy.state_dict(), ckpt_path)
+    torch.save(policy.serialize(), ckpt_path)
 
     best_step, min_val_loss, best_state_dict = best_ckpt_info
     ckpt_path = os.path.join(ckpt_dir, f'policy_step_{best_step}_seed_{seed}.ckpt')
