@@ -37,7 +37,7 @@ def main(args):
     repr_type = ckpt_name.split('-')[0]
     seed = int(ckpt_name.split('-')[-1][:-3])
 
-    dataset_dir = f'/scr/tonyzhao/mobile_aloha_datasets/{dataset_name}'
+    dataset_dir = f'/home/mobile-aloha/data/{dataset_name}'
 
     episode_idxs = [int(name.split('_')[1].split('.')[0]) for name in os.listdir(dataset_dir) if ('.hdf5' in name) and ('features' not in name)]
     episode_idxs.sort()
@@ -100,6 +100,7 @@ def main(args):
             all_features = []
             with torch.inference_mode():
                 for batch in chunks(processed_images, batch_size):
+                    print('inference')
                     features = feature_extractors[cam_name](batch)
                     features = features.squeeze(axis=3).squeeze(axis=2)
                     all_features.append(features)

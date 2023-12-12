@@ -17,8 +17,9 @@ from sim_env import BOX_POSE
 from constants import DT
 from imitate_episodes import save_videos
 from einops import rearrange
+import time
 
-
+DT = 0.02
 import IPython
 e = IPython.embed
 
@@ -56,7 +57,7 @@ def main(args):
     # TODO ######################
     k = None # for scripted box transfer
     skip = 100
-    real_robot = False
+    real_robot = True
     save_episode = True
     # TODO ######################
     onscreen_cam = 'main'
@@ -84,6 +85,12 @@ def main(args):
         env_max_reward = 1
         ks = [71]
         state_weight = 0
+    elif task_name == 'aloha_mobile_wipe_wine':
+        sim_episode_len = 1300
+        env_max_reward = 4
+        ks = [2, 2, 2]
+        state_weight = 5
+        print(f'{state_weight=}')
     else:
         raise NotImplementedError
 
@@ -91,6 +98,10 @@ def main(args):
     seed = int(model_name.split('-')[-1][:-3])
 
     k = ks[seed]
+
+    if real_robot:
+        BASE_DELAY = 15
+        query_freq = skip - BASE_DELAY
 
     # load train data
     vis_features = []
@@ -100,6 +111,8 @@ def main(args):
         dataset_path = os.path.join(dataset_dir, f'episode_{episode_id}.hdf5')
         with h5py.File(dataset_path, 'r') as root:
             action = root['/action'][:]
+            base_action = root['/base_action'][:]
+            action = np.concatenate([action, base_action], axis=1)
             camera_names = list(root[f'/observations/images/'].keys())
 
         # Visual feature
@@ -151,10 +164,10 @@ def main(args):
 
     # load environment
     if real_robot:
-        from real_env import make_real_env
-        env = make_real_env(init_node=True)
-        max_timesteps = EPISODE_LEN
-        camera_names = CAMERA_NAMES
+        from aloha_scripts.real_env import make_real_env #### TODO TODO
+        env = make_real_env(init_node=True, setup_robots=True, setup_base=True)
+        max_timesteps = sim_episode_len
+        camera_names = ['cam_high', 'cam_left_wrist', 'cam_right_wrist']
     else:
         from sim_env import make_sim_env
         env = make_sim_env(task_name)
@@ -177,19 +190,21 @@ def main(args):
         rewards = []
         with torch.inference_mode():
             for t in range(sim_episode_len):
-                ### process previous timestep to get qpos and image_list
-                obs = ts.observation
-                if 'images' in obs:
-                    image_list.append(obs['images'])
-                else:
-                    image_list.append({'main': obs['image']})
-                qpos_numpy = np.array(obs['qpos'])
-                # qpos = pre_process(qpos_numpy)
-                qpos = torch.from_numpy(qpos_numpy).float().cuda().unsqueeze(0)
-                qpos_history[:, t] = qpos
-                _, curr_image_raw = get_image(ts, camera_names)
+                start_time = time.time()
+                if t % 100 == 0: print(t)
+                if t % query_freq == 0:
+                    ### process previous timestep to get qpos and image_list
+                    obs = ts.observation
+                    if 'images' in obs:
+                        image_list.append(obs['images'])
+                    else:
+                        image_list.append({'main': obs['image']})
+                    qpos_numpy = np.array(obs['qpos'])
+                    # qpos = pre_process(qpos_numpy)
+                    qpos = torch.from_numpy(qpos_numpy).float().cuda().unsqueeze(0)
+                    qpos_history[:, t] = qpos
+                    _, curr_image_raw = get_image(ts, camera_names)
 
-                if t % skip == 0:
                     image_size = 120
                     transform = transforms.Compose([
                         transforms.Resize(image_size),  # will scale the image
@@ -220,9 +235,14 @@ def main(args):
                     ### Both features
                     curr_feature = [curr_image_feature, qpos]
 
-                    all_target_qpos = calculate_nearest_neighbors(curr_feature, train_inputs, train_targets, k, state_weight) # TODO use this
-                    all_target_qpos = all_target_qpos.squeeze(0).cpu().numpy()
-                target_qpos = all_target_qpos[t % skip]
+                    action = calculate_nearest_neighbors(curr_feature, train_inputs, train_targets, k, state_weight) # TODO use this
+                    action = action.squeeze(0).cpu().numpy()
+                    action = np.concatenate([action[:-BASE_DELAY, :-2], action[BASE_DELAY:, -2:]], axis=1)
+                    print(f'Query: {(time.time() - start_time):.3f}s')
+
+                curr_action = action[t % query_freq]
+                target_qpos = curr_action[:-2]
+                base_action = curr_action[-2:]
 
                 # ### SAFETY
                 # max_a = 0.05
@@ -231,7 +251,10 @@ def main(args):
                 # ### SAFETY
 
                 ### step the environment
-                ts = env.step(target_qpos)
+                ts = env.step(target_qpos, base_action=base_action)
+                duration = time.time() - start_time
+                # print(f'{duration:.3f}')
+                time.sleep(max(0, DT - duration))
 
                 ### save things for visualization
                 qpos_list.append(qpos_numpy)

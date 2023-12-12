@@ -248,6 +248,28 @@ CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_elevator_truncated_c
 
 
 
+# eval on real robot
+
+conda activate aloha
+cd /home/mobile-aloha/interbotix_ws/src/act
+TASK_NAME=aloha_mobile_wipe_wine
+python3 vinn_cache_feature.py --ckpt_path /home/mobile-aloha/interbotix_ws/src/act/ckpts/vinn_ckpts/byol-${TASK_NAME}-DUMMY-seed-0.pt
+
+
+TASK_NAME=aloha_mobile_wipe_wine
+python3 vinn_select_k.py \
+--dataset_dir /home/mobile-aloha/data/${TASK_NAME} \
+--ckpt_dir /home/mobile-aloha/interbotix_ws/src/act/ckpts/vinn_ckpts/VINN-eval-seed-0-test \
+
+
+TASK_NAME=aloha_mobile_wipe_wine
+python3 vinn_eval.py \
+--dataset_dir /home/mobile-aloha/data/${TASK_NAME} \
+--model_dir /home/mobile-aloha/interbotix_ws/src/act/ckpts/vinn_ckpts/byol-${TASK_NAME}-DUMMY-seed-0.pt \
+--ckpt_dir /home/mobile-aloha/interbotix_ws/src/act/ckpts/vinn_ckpts/VINN-eval-seed-0-test \
+--task_name $TASK_NAME 
+
+
 ---------------------------------------------------------------------------------------
 
 NOTE: chunk size cannot be any number, try before launching
