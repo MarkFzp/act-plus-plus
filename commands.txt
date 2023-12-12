@@ -126,6 +126,17 @@ CUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \
 --batch_size 32 --lr 1e-4 --seed 0 \
 --num_steps 200000 --eval_every 4000 --validate_every 4000 --save_every 4000
 
+conda activate mobile
+export MUJOCO_GL=egl
+cd /home/tonyzhao/Research/act-plus-plus
+CUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \
+--task_name sim_transfer_cube_scripted \
+--ckpt_dir /scr/tonyzhao/train_logs/cube_scripted_diffusion_sweep_4_regressionTest \
+--policy_class Diffusion --chunk_size 32 \
+--batch_size 32 --lr 1e-4 --seed 0 \
+--num_steps 200000 --eval_every 6000 --validate_every 6000 --save_every 6000
+
+
 
 
 
@@ -163,6 +174,78 @@ python3 vinn_eval.py \
 ## TODO
 make sure env is consistent
 tune a bit more
+
+
+######################## VINN Real ########################
+
+### test backward compatibility
+
+conda activate mobile
+cd /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning
+CUDA_VISIBLE_DEVICES=1 python3 train.py --task sim_transfer_cube_scripted --cam_name top --seed 0
+CUDA_VISIBLE_DEVICES=1 python3 train.py --task sim_transfer_cube_scripted --cam_name left_wrist --seed 0
+
+conda activate mobile
+cd /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning
+CUDA_VISIBLE_DEVICES=1 python3 train.py --task sim_transfer_cube_scripted --cam_name right_wrist --seed 0
+
+
+conda activate mobile
+cd /home/tonyzhao/Research/act-plus-plus
+TASK_NAME=sim_transfer_cube_scripted
+python3 vinn_cache_feature.py --ckpt_path /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning/byol-${TASK_NAME}-DUMMY-seed-0.pt
+
+TASK_NAME=sim_transfer_cube_scripted
+python3 vinn_select_k.py \
+--dataset_dir /scr/tonyzhao/datasets/sim_transfer_cube_scripted \
+--ckpt_dir /scr/tonyzhao/train_logs/VINN-eval-seed-0-test
+
+python3 vinn_eval.py \
+--dataset_dir /scr/tonyzhao/datasets/sim_transfer_cube_scripted \
+--model_dir /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning/byol-${TASK_NAME}-DUMMY-seed-0.pt \
+--ckpt_dir /scr/tonyzhao/train_logs/VINN-eval-seed-0-test \
+--task_name $TASK_NAME 
+
+### new data loader passed backward compatibility
+
+
+conda activate mobile
+cd /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning
+#CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wipe_wine --cam_name cam_high --seed 0
+#CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wipe_wine --cam_name cam_left_wrist --seed 0
+#CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wipe_wine --cam_name cam_right_wrist --seed 0
+
+#CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wipe_wine_cotrain --cam_name cam_high --seed 0
+#CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wipe_wine_cotrain --cam_name cam_left_wrist --seed 0
+CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wipe_wine_cotrain --cam_name cam_right_wrist --seed 0
+
+
+conda activate mobile
+cd /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning
+#CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wash_pan --cam_name cam_high --seed 0
+#CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wash_pan --cam_name cam_left_wrist --seed 0
+#CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wash_pan --cam_name cam_right_wrist --seed 0
+
+#CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wash_pan_cotrain --cam_name cam_high --seed 0
+#CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wash_pan_cotrain --cam_name cam_left_wrist --seed 0
+CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wash_pan_cotrain --cam_name cam_right_wrist --seed 0
+
+
+conda activate mobile
+cd /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning
+CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wipe_wine_cotrain --cam_name cam_right_wrist --seed 0
+CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_elevator_truncated --cam_name cam_high --seed 0
+CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_elevator_truncated --cam_name cam_left_wrist --seed 0
+CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_elevator_truncated --cam_name cam_right_wrist --seed 0
+
+
+conda activate mobile
+cd /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning
+CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wash_pan_cotrain --cam_name cam_right_wrist --seed 0
+CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_elevator_truncated_cotrain --cam_name cam_high --seed 0
+CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_elevator_truncated_cotrain --cam_name cam_left_wrist --seed 0
+CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_elevator_truncated_cotrain --cam_name cam_right_wrist --seed 0
+
 
 
 ---------------------------------------------------------------------------------------
