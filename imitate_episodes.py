@@ -465,6 +465,7 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
             # save qpos_history_raw
             log_id = get_auto_index(ckpt_dir)
             np.save(os.path.join(ckpt_dir, f'qpos_{log_id}.npy'), qpos_history_raw)
+            plt.figure(figsize=(10, 20))
             # plot qpos_history_raw for each qpos dim using subplots
             for i in range(state_dim):
                 plt.subplot(state_dim, 1, i+1)
