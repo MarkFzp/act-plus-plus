@@ -141,3 +141,7 @@ dmypy.json
 
 ckpts/
 *log*
+
+*.png
+*.npy
+play.ipynb
