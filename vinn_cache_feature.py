@@ -9,6 +9,9 @@ import h5py
 import h5py
 from torchvision import models, transforms
 from PIL import Image
+from tqdm import tqdm
+import cv2
+import numpy as np
 
 import IPython
 e = IPython.embed
@@ -34,7 +37,7 @@ def main(args):
     repr_type = ckpt_name.split('-')[0]
     seed = int(ckpt_name.split('-')[-1][:-3])
 
-    dataset_dir = f'/scr/tonyzhao/datasets/{dataset_name}'
+    dataset_dir = f'/scr/tonyzhao/mobile_aloha_datasets/{dataset_name}'
 
     episode_idxs = [int(name.split('_')[1].split('.')[0]) for name in os.listdir(dataset_dir) if ('.hdf5' in name) and ('features' not in name)]
     episode_idxs.sort()
@@ -52,7 +55,14 @@ def main(args):
             camera_names = list(root[f'/observations/images/'].keys())
             print(f'Camera names: {camera_names}')
             for cam_name in camera_names:
-                image_dict[cam_name] = root[f'/observations/images/{cam_name}'][:]
+                image = root[f'/observations/images/{cam_name}'][:]
+                uncompressed_image = []
+                for im in image:
+                    im = np.array(cv2.imdecode(im, 1))
+                    uncompressed_image.append(im)
+                image = np.stack(uncompressed_image, axis=0)
+
+                image_dict[cam_name] = image
 
         # load pretrain nets after cam names are known
         if not feature_extractors:
@@ -80,7 +90,7 @@ def main(args):
                     std=torch.tensor([0.229, 0.224, 0.225])),
             ])
             processed_images = []
-            for image in images:
+            for image in tqdm(images):
                 image = Image.fromarray(image)
                 image = transform(image)
                 processed_images.append(image)
