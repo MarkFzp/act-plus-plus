@@ -32,12 +32,11 @@ def main(args):
     #################################################
 
     ckpt_path = args.ckpt_path
+    dataset_dir = args.dataset_dir
     ckpt_name = pathlib.PurePath(ckpt_path).name
     dataset_name = ckpt_name.split('-')[1]
     repr_type = ckpt_name.split('-')[0]
     seed = int(ckpt_name.split('-')[-1][:-3])
-
-    dataset_dir = f'/home/mobile-aloha/data/{dataset_name}'
 
     episode_idxs = [int(name.split('_')[1].split('.')[0]) for name in os.listdir(dataset_dir) if ('.hdf5' in name) and ('features' not in name)]
     episode_idxs.sort()
@@ -138,6 +137,7 @@ def main(args):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='cache features')
     parser.add_argument('--ckpt_path', type=str, required=True, help='ckpt_path')
+    parser.add_argument('--dataset_dir', type=str, required=True, help='dataset_dir')
     args = parser.parse_args()
 
     main(args)
