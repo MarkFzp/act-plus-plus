@@ -10,6 +10,8 @@ from tqdm import tqdm
 from einops import rearrange
 import wandb
 import time
+import ray
+from ray.util.queue import Queue
 
 from constants import FPS
 from constants import PUPPET_GRIPPER_JOINT_OPEN
@@ -25,6 +27,8 @@ from sim_env import BOX_POSE
 
 import IPython
 e = IPython.embed
+
+ray.init()
 
 def get_auto_index(dataset_dir):
     max_idx = 1000
@@ -208,8 +212,24 @@ def get_image(ts, camera_names):
         curr_image = rearrange(ts.observation['images'][cam_name], 'h w c -> c h w')
         curr_images.append(curr_image)
     curr_image = np.stack(curr_images, axis=0)
-    curr_image = torch.from_numpy(curr_image / 255.0).float().cuda().unsqueeze(0)
+    curr_image = torch.from_numpy(curr_image / 255.0).float().unsqueeze(0)
     return curr_image
+
+
+@ray.remote(num_gpus=0.1)
+class PolicyLoop:
+    def __init__(self, policy, input_queue, action_queue):
+        self.input_queue = input_queue
+        self.action_queue = action_queue
+        self.policy = policy  # Replace with your AI model initialization
+
+    def run(self):
+        while True:
+            input = self.input_queue.get()
+            obs = input['obs'].cuda()
+            qpos = input['qpos'].cuda()
+            action = self.policy(qpos, obs)
+            self.action_queue.put({'action': action.cpu(), 'query_wall_t': input['query_wall_t'], 'query_t': input['query_t']})
 
 
 def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
@@ -228,6 +248,8 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
     vq = config['policy_config']['vq']
     actuator_config = config['actuator_config']
     use_actuator_net = actuator_config['actuator_network_dir'] is not None
+
+    async_query = True
 
     # load policy and stats
     ckpt_path = os.path.join(ckpt_dir, ckpt_name)
@@ -280,6 +302,17 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
     else:
         post_process = lambda a: a * stats['action_std'] + stats['action_mean']
 
+    # async
+    if async_query:
+        ray.put(policy)
+        # Create the communication queues
+        input_queue = Queue()
+        action_queue = Queue()
+        # Start the robot AI loop actor
+        for _ in range(2):
+            policy_loop = PolicyLoop.remote(policy, input_queue, action_queue)
+            policy_loop.run.remote()
+
     # load environment
     if real_robot:
         from aloha_scripts.robot_utils import move_grippers # requires aloha
@@ -291,7 +324,7 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
         env = make_sim_env(task_name)
         env_max_reward = env.task.max_reward
 
-    query_frequency = policy_config['num_queries']
+    query_frequency = num_queries = policy_config['num_queries']
     if temporal_agg:
         query_frequency = 1
         num_queries = policy_config['num_queries']
@@ -322,8 +355,8 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
             plt.ion()
 
         ### evaluation loop
-        if temporal_agg:
-            all_time_actions = torch.zeros([max_timesteps, max_timesteps+num_queries, 16]).cuda()
+        if temporal_agg or async_query:
+            all_time_actions = torch.zeros([max_timesteps, max_timesteps+num_queries, 16])
 
         # qpos_history = torch.zeros((1, max_timesteps, state_dim)).cuda()
         qpos_history_raw = np.zeros((max_timesteps, state_dim))
@@ -355,18 +388,33 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
                 qpos_numpy = np.array(obs['qpos'])
                 qpos_history_raw[t] = qpos_numpy
                 qpos = pre_process(qpos_numpy)
-                qpos = torch.from_numpy(qpos).float().cuda().unsqueeze(0)
+                qpos = torch.from_numpy(qpos).float().unsqueeze(0)
                 # qpos_history[:, t] = qpos
                 if t % query_frequency == 0:
                     curr_image = get_image(ts, camera_names)
                 # print('get image: ', time.time() - time2)
+                if not async_query:
+                    qpos = qpos.cuda()
+                    curr_image = curr_image.cuda()
 
                 if t == 0:
-                    # warm up
-                    for _ in range(10):
-                        policy(qpos, curr_image)
-                    print('network warm up done')
-                    time1 = time.time()
+                    print('Warming up')
+                    if async_query:
+                        num_warmup_steps = 10
+                        for _ in tqdm(range(num_warmup_steps)):
+                            input_queue.put({'qpos': qpos, 'obs': curr_image, 'query_wall_t': time.time(), 'query_t': t})
+                            while action_queue.qsize() == 0:
+                                time.sleep(0.01)
+                            if action_queue.qsize() > 0:
+                                while action_queue.qsize() > 0:
+                                    res_dict = action_queue.get()
+                                query_wall_t = res_dict['query_wall_t']
+                                query_t = res_dict['query_t']
+                                all_actions = res_dict['action']
+                    else:
+                        for _ in range(10):
+                            policy(qpos, curr_image)
+                        time1 = time.time()
 
                 ### query policy
                 time3 = time.time()
@@ -394,7 +442,7 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
                         k = 0.01
                         exp_weights = np.exp(-k * np.arange(len(actions_for_curr_step)))
                         exp_weights = exp_weights / exp_weights.sum()
-                        exp_weights = torch.from_numpy(exp_weights).cuda().unsqueeze(dim=1)
+                        exp_weights = torch.from_numpy(exp_weights).unsqueeze(dim=1)
                         raw_action = (actions_for_curr_step * exp_weights).sum(dim=0, keepdim=True)
                     else:
                         raw_action = all_actions[:, t % query_frequency]
@@ -402,13 +450,44 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
                         #     # zero out base actions to avoid overshooting
                         #     raw_action[0, -2:] = 0
                 elif config['policy_class'] == "Diffusion":
-                    if t % query_frequency == 0:
-                        all_actions = policy(qpos, curr_image)
-                        # if use_actuator_net:
-                        #     collect_base_action(all_actions, norm_episode_all_base_actions)
-                        if real_robot:
-                            all_actions = torch.cat([all_actions[:, :-BASE_DELAY, :-2], all_actions[:, BASE_DELAY:, -2:]], dim=2)
-                    raw_action = all_actions[:, t % query_frequency]
+                    if async_query:
+                        freq_mult = 0.5
+                        if t == 0 or (t % int(query_frequency*freq_mult) == 0):
+                            print(f'{t}: Put')
+                            input_queue.put({'qpos': qpos, 'obs': curr_image, 'query_wall_t': time.time(), 'query_t': t})
+
+                        # Wait if no action is produced for current step and nothing in the queue
+                        no_action = not all_time_actions[:, t].any()
+                        no_queue = action_queue.qsize() == 0
+                        while no_action and no_queue:
+                            time.sleep(0.01)
+                            print(f'{t}: wait')
+                            no_action = not all_time_actions[:, t].any()
+                            no_queue = action_queue.qsize() == 0
+                        
+                        # Get action 
+                        if action_queue.qsize() > 0:
+                            print(f'{t}: Get')
+                            while action_queue.qsize() > 0:
+                                res_dict = action_queue.get()
+                            query_wall_t = res_dict['query_wall_t']
+                            query_t = res_dict['query_t']
+                            all_actions = res_dict['action']
+                            all_time_actions[query_t, query_t:query_t+num_queries] = all_actions
+
+                        all_time_curr_actions = all_time_actions[:, t]
+                        has_action = all_time_curr_actions.any(dim=1)
+                        first_index = torch.arange(len(has_action))[has_action].max().item()
+                        # print(first_index)
+                        raw_action = all_time_curr_actions[first_index]
+                    else:
+                        if t % query_frequency == 0:
+                            all_actions = policy(qpos.cuda(), curr_image.cuda())
+                            # if use_actuator_net:
+                            #     collect_base_action(all_actions, norm_episode_all_base_actions)
+                            if real_robot:
+                                all_actions = torch.cat([all_actions[:, :-BASE_DELAY, :-2], all_actions[:, BASE_DELAY:, -2:]], dim=2)
+                        raw_action = all_actions[:, t % query_frequency]
                 elif config['policy_class'] == "CNNMLP":
                     raw_action = policy(qpos, curr_image)
                     all_actions = raw_action.unsqueeze(0)
@@ -454,7 +533,7 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
                 duration = time.time() - time1
                 time.sleep(max(0, DT - duration))
                 # time.sleep(max(0, DT - duration - culmulated_delay))
-                if duration >= DT:
+                if duration >= DT and real_robot:
                     culmulated_delay += (duration - DT)
                     print(f'Warning: step duration: {duration:.3f} s at step {t} longer than DT: {DT} s, culmulated delay: {culmulated_delay:.3f} s')
                 # else:

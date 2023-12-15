@@ -391,6 +391,23 @@ python3 vinn_eval.py \
 --task_name $TASK_NAME 
 
 
+# debug async model query
+
+
+conda activate mobile
+export MUJOCO_GL=egl
+cd /home/tonyzhao/Research/act-plus-plus
+CUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \
+--task_name sim_transfer_cube_scripted \
+--ckpt_dir /scr/tonyzhao/train_logs/cube_scripted_diffusion_sweep_6_noEMA_seed1 \
+--policy_class Diffusion --chunk_size 32 \
+--batch_size 32 --lr 1e-4 --seed 1 \
+--num_steps 200000 --eval_every 6000 --validate_every 6000 --save_every 6000 --eval
+
+
+
+
+
 ---------------------------------------------------------------------------------------
 
 NOTE: chunk size cannot be any number, try before launching

@@ -43,6 +43,7 @@ You can find all scripted/human demo for simulated environments [here](https://d
     pip install packaging
     pip install h5py
     pip install ipython
+    pip install ray==2.7.1
     cd act/detr && pip install -e .
 
 ### Example Usages
