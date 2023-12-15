@@ -10,6 +10,7 @@ from tqdm import tqdm
 from einops import rearrange
 import wandb
 import time
+from torchvision import transforms
 
 from constants import FPS
 from constants import PUPPET_GRIPPER_JOINT_OPEN
@@ -202,13 +203,25 @@ def make_optimizer(policy_class, policy):
     return optimizer
 
 
-def get_image(ts, camera_names):
+def get_image(ts, camera_names, rand_crop_resize=False):
     curr_images = []
     for cam_name in camera_names:
         curr_image = rearrange(ts.observation['images'][cam_name], 'h w c -> c h w')
         curr_images.append(curr_image)
     curr_image = np.stack(curr_images, axis=0)
     curr_image = torch.from_numpy(curr_image / 255.0).float().cuda().unsqueeze(0)
+
+    if rand_crop_resize:
+        print('rand crop resize is used!')
+        original_size = curr_image.shape[-2:]
+        ratio = 0.95
+        curr_image = curr_image[..., int(original_size[0] * (1 - ratio) / 2): int(original_size[0] * (1 + ratio) / 2),
+                     int(original_size[1] * (1 - ratio) / 2): int(original_size[1] * (1 + ratio) / 2)]
+        curr_image = curr_image.squeeze(0)
+        resize_transform = transforms.Resize(original_size, antialias=True)
+        curr_image = resize_transform(curr_image)
+        curr_image = curr_image.unsqueeze(0)
+    
     return curr_image
 
 
@@ -296,7 +309,7 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
         query_frequency = 1
         num_queries = policy_config['num_queries']
     if real_robot:
-        BASE_DELAY = 15
+        BASE_DELAY = 13
         query_frequency -= BASE_DELAY
 
     max_timesteps = int(max_timesteps * 1) # may increase for real-world tasks
@@ -358,7 +371,7 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
                 qpos = torch.from_numpy(qpos).float().cuda().unsqueeze(0)
                 # qpos_history[:, t] = qpos
                 if t % query_frequency == 0:
-                    curr_image = get_image(ts, camera_names)
+                    curr_image = get_image(ts, camera_names, rand_crop_resize=(config['policy_class'] == 'Diffusion'))
                 # print('get image: ', time.time() - time2)
 
                 if t == 0:
@@ -452,7 +465,9 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
                 target_qpos_list.append(target_qpos)
                 rewards.append(ts.reward)
                 duration = time.time() - time1
-                time.sleep(max(0, DT - duration))
+                sleep_time = max(0, DT - duration)
+                # print(sleep_time)
+                time.sleep(sleep_time)
                 # time.sleep(max(0, DT - duration - culmulated_delay))
                 if duration >= DT:
                     culmulated_delay += (duration - DT)
@@ -477,6 +492,7 @@ def eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):
                     plt.xticks([])
             plt.tight_layout()
             plt.savefig(os.path.join(ckpt_dir, f'qpos_{log_id}.png'))
+            plt.close()
 
 
         rewards = np.array(rewards)
