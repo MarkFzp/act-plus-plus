@@ -169,6 +169,38 @@ CUDA_VISIBLE_DEVICES=1 python3 imitate_episodes.py \
 --batch_size 32 --lr 1e-4 --seed 0 \
 --num_steps 1000000 --eval_every 1000000 --validate_every 5000 --save_every 5000
 
+## Cotrain
+conda activate mobile
+export MUJOCO_GL=egl
+cd /home/tonyzhao/Research/act-plus-plus
+CUDA_VISIBLE_DEVICES=1 python3 imitate_episodes.py \
+--task_name aloha_mobile_wipe_wine_cotrain \
+--ckpt_dir /scr/tonyzhao/train_logs/wipe_wine_cotrain_diffusion_seed0 \
+--policy_class Diffusion --chunk_size 32 \
+--batch_size 32 --lr 1e-4 --seed 0 \
+--num_steps 1000000 --eval_every 1000000 --validate_every 5000 --save_every 5000
+
+# train no cotrain again with augmentations
+conda activate mobile
+export MUJOCO_GL=egl
+cd /home/tonyzhao/Research/act-plus-plus
+CUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \
+--task_name aloha_mobile_wipe_wine \
+--ckpt_dir /scr/tonyzhao/train_logs/wipe_wine_diffusion_augmentation_seed0 \
+--policy_class Diffusion --chunk_size 32 \
+--batch_size 32 --lr 1e-4 --seed 0 \
+--num_steps 1000000 --eval_every 1000000 --validate_every 5000 --save_every 5000
+
+## Cotrain with augmentations
+conda activate mobile
+export MUJOCO_GL=egl
+cd /home/tonyzhao/Research/act-plus-plus
+CUDA_VISIBLE_DEVICES=1 python3 imitate_episodes.py \
+--task_name aloha_mobile_wipe_wine_cotrain \
+--ckpt_dir /scr/tonyzhao/train_logs/wipe_wine_cotrain_diffusion_augmentation_seed0 \
+--policy_class Diffusion --chunk_size 32 \
+--batch_size 32 --lr 1e-4 --seed 0 \
+--num_steps 1000000 --eval_every 1000000 --validate_every 5000 --save_every 5000
 
 
 

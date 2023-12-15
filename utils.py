@@ -5,7 +5,9 @@ import h5py
 import pickle
 import fnmatch
 import cv2
+from time import time
 from torch.utils.data import TensorDataset, DataLoader
+import torchvision.transforms as transforms
 
 import IPython
 e = IPython.embed
@@ -25,7 +27,12 @@ class EpisodicDataset(torch.utils.data.Dataset):
         self.cumulative_len = np.cumsum(self.episode_len)
         self.max_episode_len = max(episode_len)
         self.policy_class = policy_class
-        self.__getitem__(0) # initialize self.is_sim
+        if self.policy_class == 'Diffusion':
+            self.augment_images = True
+        else:
+            self.augment_images = False
+        self.transformations = None
+        self.__getitem__(0) # initialize self.is_sim and self.transformations
         self.is_sim = False
 
     # def __len__(self):
@@ -101,6 +108,22 @@ class EpisodicDataset(torch.utils.data.Dataset):
 
             # channel last
             image_data = torch.einsum('k h w c -> k c h w', image_data)
+
+            # augmentation
+            if self.transformations is None:
+                print('Initializing transformations')
+                original_size = image_data.shape[2:]
+                ratio = 0.95
+                self.transformations = [
+                    transforms.RandomCrop(size=[int(original_size[0] * ratio), int(original_size[1] * ratio)]),
+                    transforms.Resize(original_size, antialias=True),
+                    transforms.RandomRotation(degrees=[-5.0, 5.0], expand=False),
+                    transforms.ColorJitter(brightness=0.3, contrast=0.4, saturation=0.5) #, hue=0.08)
+                ]
+
+            if self.augment_images:
+                for transform in self.transformations:
+                    image_data = transform(image_data)
 
             # normalize image and change dtype to float
             image_data = image_data / 255.0
@@ -238,8 +261,8 @@ def load_data(dataset_dir_l, name_filter, camera_names, batch_size_train, batch_
     # construct dataset and dataloader
     train_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, train_episode_ids, train_episode_len, chunk_size, policy_class)
     val_dataset = EpisodicDataset(dataset_path_list, camera_names, norm_stats, val_episode_ids, val_episode_len, chunk_size, policy_class)
-    train_dataloader = DataLoader(train_dataset, batch_sampler=batch_sampler_train, pin_memory=True, num_workers=2, prefetch_factor=2)
-    val_dataloader = DataLoader(val_dataset, batch_sampler=batch_sampler_val, pin_memory=True, num_workers=2, prefetch_factor=2)
+    train_dataloader = DataLoader(train_dataset, batch_sampler=batch_sampler_train, pin_memory=True, num_workers=16, prefetch_factor=2)
+    val_dataloader = DataLoader(val_dataset, batch_sampler=batch_sampler_val, pin_memory=True, num_workers=8, prefetch_factor=2)
 
     return train_dataloader, val_dataloader, norm_stats, train_dataset.is_sim
 
