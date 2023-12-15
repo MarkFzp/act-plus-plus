@@ -117,8 +117,8 @@ class EpisodicDataset(torch.utils.data.Dataset):
                 self.transformations = [
                     transforms.RandomCrop(size=[int(original_size[0] * ratio), int(original_size[1] * ratio)]),
                     transforms.Resize(original_size, antialias=True),
-                    # transforms.RandomRotation(degrees=[-5.0, 5.0], expand=False),
-                    # transforms.ColorJitter(brightness=0.3, contrast=0.4, saturation=0.5) #, hue=0.08)
+                    transforms.RandomRotation(degrees=[-5.0, 5.0], expand=False),
+                    transforms.ColorJitter(brightness=0.3, contrast=0.4, saturation=0.5) #, hue=0.08)
                 ]
 
             if self.augment_images:
