@@ -93,6 +93,7 @@ class EpisodicDataset(torch.utils.data.Dataset):
             is_pad[action_len:] = 1
 
             padded_action = padded_action[:self.chunk_size]
+            is_pad = is_pad[:self.chunk_size]
 
             # new axis for different cameras
             all_cam_images = []

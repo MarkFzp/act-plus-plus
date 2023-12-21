@@ -65,7 +65,7 @@ class DiffusionPolicy(nn.Module):
         })
 
         nets = nets.float().cuda()
-        ENABLE_EMA = False
+        ENABLE_EMA = True
         if ENABLE_EMA:
             ema = EMAModel(model=nets, power=self.ema_power)
         else:
@@ -125,7 +125,8 @@ class DiffusionPolicy(nn.Module):
             noise_pred = nets['policy']['noise_pred_net'](noisy_actions, timesteps, global_cond=obs_cond)
             
             # L2 loss
-            loss = F.mse_loss(noise_pred, noise)
+            all_l2 = F.mse_loss(noise_pred, noise, reduction='none')
+            loss = (all_l2 * ~is_pad.unsqueeze(-1)).mean()
 
             loss_dict = {}
             loss_dict['l2_loss'] = loss
