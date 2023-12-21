@@ -48,6 +48,11 @@ def main(args):
     batch_size = 100
     # TODO ######################
 
+    repr_type = 'byol'
+    if 'cotrain' in ckpt_dir:
+        repr_type += '_cotrain'
+    e() # make sure!
+
     if not os.path.isdir(ckpt_dir):
         os.makedirs(ckpt_dir)
     
@@ -67,7 +72,7 @@ def main(args):
             camera_names = list(root[f'/observations/images/'].keys())
         
         all_cam_feature = []
-        feature_dataset_path = os.path.join(dataset_dir, f'byol_features_seed{seed}_episode_{episode_id}.hdf5')
+        feature_dataset_path = os.path.join(dataset_dir, f'{repr_type}_features_seed{seed}_episode_{episode_id}.hdf5')
         with h5py.File(feature_dataset_path, 'r') as root:
             for cam_name in camera_names:
                 cam_feature = root[f'/features/{cam_name}'][:]
@@ -92,7 +97,7 @@ def main(args):
             action = root['/action'][:]
 
         all_cam_feature = []
-        feature_dataset_path = os.path.join(dataset_dir, f'byol_features_seed{seed}_episode_{episode_id}.hdf5')
+        feature_dataset_path = os.path.join(dataset_dir, f'{repr_type}_features_seed{seed}_episode_{episode_id}.hdf5')
         with h5py.File(feature_dataset_path, 'r') as root:
             for cam_name in camera_names:
                 cam_feature = root[f'/features/{cam_name}'][:]

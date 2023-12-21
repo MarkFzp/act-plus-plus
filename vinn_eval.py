@@ -97,6 +97,11 @@ def main(args):
     model_name = pathlib.PurePath(model_dir).name
     seed = int(model_name.split('-')[-1][:-3])
 
+    repr_type = 'byol'
+    if 'cotrain' in model_name:
+        repr_type += '_cotrain'
+    e() # make sure!
+
     k = ks[seed]
 
     if real_robot:
@@ -118,7 +123,7 @@ def main(args):
         # Visual feature
         all_cam_feature = []
         for cam_name in camera_names:
-            feature_dataset_path = os.path.join(dataset_dir, f'byol_features_seed{seed}_episode_{episode_id}.hdf5')
+            feature_dataset_path = os.path.join(dataset_dir, f'{repr_type}_features_seed{seed}_episode_{episode_id}.hdf5')
             with h5py.File(feature_dataset_path, 'r') as root:
                 cam_feature = root[f'/features/{cam_name}'][:]
                 all_cam_feature.append(cam_feature)

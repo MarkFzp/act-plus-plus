@@ -38,6 +38,9 @@ def main(args):
     repr_type = ckpt_name.split('-')[0]
     seed = int(ckpt_name.split('-')[-1][:-3])
 
+    if 'cotrain' in ckpt_name:
+        repr_type += '_cotrain'
+
     episode_idxs = [int(name.split('_')[1].split('.')[0]) for name in os.listdir(dataset_dir) if ('.hdf5' in name) and ('features' not in name)]
     episode_idxs.sort()
     assert len(episode_idxs) == episode_idxs[-1] + 1 # no holes
@@ -48,6 +51,7 @@ def main(args):
     for episode_idx in range(num_episodes):
 
         # load all images
+        print(f'loading data')
         dataset_path = os.path.join(dataset_dir, f'episode_{episode_idx}.hdf5')
         with h5py.File(dataset_path, 'r') as root:
             image_dict = {}
@@ -63,6 +67,7 @@ def main(args):
 
                 image_dict[cam_name] = image
 
+        print(f'loading model')
         # load pretrain nets after cam names are known
         if not feature_extractors:
             for cam_name in camera_names:
