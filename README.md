@@ -50,7 +50,7 @@ To set up a new terminal, run:
     conda activate aloha
     cd <path to act repo>
 
-### Simulated experiments
+### Simulated experiments (LEGACY table-top ALOHA environments)
 
 We use ``sim_transfer_cube_scripted`` task in the examples below. Another option is ``sim_insertion_scripted``.
 To generated 50 episodes of scripted data, run:
@@ -58,9 +58,11 @@ To generated 50 episodes of scripted data, run:
     python3 record_sim_episodes.py --task_name sim_transfer_cube_scripted --dataset_dir <data save dir> --num_episodes 50
 
 To can add the flag ``--onscreen_render`` to see real-time rendering.
-To visualize the episode after it is collected, run
+To visualize the simulated episodes after it is collected, run
 
     python3 visualize_episodes.py --dataset_dir <data save dir> --episode_idx 0
+
+Note: to visualize data from the mobile-aloha hardware, use the visualize_episodes.py from https://github.com/MarkFzp/mobile-aloha
 
 To train ACT:
     
