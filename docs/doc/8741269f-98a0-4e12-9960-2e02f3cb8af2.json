@@ -1,0 +1,15 @@
+{
+    "summary": "This code imports modules, defines a calibration function for head cam and symmetrical arms, creates instances of InterbotixManipulatorXS bots, sets arm positions to sleep for 2 seconds, and opens grippers.",
+    "details": [
+        {
+            "comment": "Code imports necessary modules and defines a function for calibrating head cam and symmetrical arms. It creates instances of InterbotixManipulatorXS for left and right puppet bots, turns on torque, and initializes positions based on multipliers for symmetry.",
+            "location": "\"/media/root/Prima/works/act-plus-plus/docs/src/align.py\":0-22",
+            "content": "from interbotix_xs_modules.arm import InterbotixManipulatorXS\nfrom aloha_scripts.robot_utils import move_arms, torque_on, move_grippers\nfrom constants import PUPPET_GRIPPER_JOINT_OPEN, PUPPET_GRIPPER_JOINT_CLOSE\nimport argparse\nimport numpy as np\n# for calibrating head cam and arms being symmetrical\ndef main():\n    argparser = argparse.ArgumentParser()\n    argparser.add_argument('--all', action='store_true', default=False)\n    args = argparser.parse_args()\n    puppet_bot_left = InterbotixManipulatorXS(robot_model=\"vx300s\", group_name=\"arm\", gripper_name=\"gripper\", robot_name=f'puppet_left', init_node=True)\n    puppet_bot_right = InterbotixManipulatorXS(robot_model=\"vx300s\", group_name=\"arm\", gripper_name=\"gripper\", robot_name=f'puppet_right', init_node=False)\n    all_bots = [puppet_bot_left, puppet_bot_right]\n    for bot in all_bots:\n        torque_on(bot)\n    multiplier = np.array([-1, 1, 1, -1, 1, 1])\n    puppet_sleep_position_left = np.array([-0.8, -0.5, 0.5, 0, 0.65, 0])\n    puppet_sleep_position_right = puppet_sleep_position_left * multiplier"
+        },
+        {
+            "comment": "Sets all bots' arm positions to sleep positions for 2 seconds, then opens grippers.",
+            "location": "\"/media/root/Prima/works/act-plus-plus/docs/src/align.py\":23-30",
+            "content": "    all_positions = [puppet_sleep_position_left, puppet_sleep_position_right]\n    move_arms(all_bots, all_positions, move_time=2)\n    # move_grippers(all_bots, [PUPPET_GRIPPER_JOINT_OPEN] * 2, move_time=1)  # open\nif __name__ == '__main__':\n    main()"
+        }
+    ]
+}

@@ -1,0 +1,10 @@
+{
+    "summary": "The code imports the build functions for DETR-VAE and CNN+MLP models from their respective modules. It defines two model building functions, `build_ACT_model` and `build_CNNMLP_model`, which return the built models using the imported build functions based on given arguments.",
+    "details": [
+        {
+            "comment": "The code imports the build functions for DETR-VAE and CNN+MLP models from their respective modules. It defines two model building functions, `build_ACT_model` and `build_CNNMLP_model`, which return the built models using the imported build functions based on given arguments.",
+            "location": "\"/media/root/Prima/works/act-plus-plus/docs/src/detr/models/__init__.py\":0-8",
+            "content": "# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved\nfrom .detr_vae import build as build_vae\nfrom .detr_vae import build_cnnmlp as build_cnnmlp\ndef build_ACT_model(args):\n    return build_vae(args)\ndef build_CNNMLP_model(args):\n    return build_cnnmlp(args)"
+        }
+    ]
+}

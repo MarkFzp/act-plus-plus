@@ -1,0 +1,10 @@
+{
+    "summary": "This code is a Python setup script that utilizes the distutils and setuptools packages to create a distribution package for the 'act' software. It specifies the name, version, packages, license, and long_description of the software.",
+    "details": [
+        {
+            "comment": "This code is a Python setup script that utilizes the distutils and setuptools packages to create a distribution package for the 'act' software. It specifies the name, version, packages, license, and long_description of the software.",
+            "location": "\"/media/root/Prima/works/act-plus-plus/docs/src/setup.py\":0-9",
+            "content": "from distutils.core import setup\nfrom setuptools import find_packages\nsetup(\n    name='act',\n    version='0.0.0',\n    packages=find_packages(),\n    license='MIT License',\n    long_description=open('README.md').read(),\n)"
+        }
+    ]
+}

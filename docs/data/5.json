@@ -1,0 +1,549 @@
+{
+    "500": {
+        "file_id": 30,
+        "content": "/sim_env.py",
+        "type": "filepath"
+    },
+    "501": {
+        "file_id": 30,
+        "content": "This code defines a bi-manual manipulation environment, sets up action and observation spaces for cube transfer tasks, initializes physics simulation, and enables interactive plotting. It determines rewards based on contact and gripper positions.",
+        "type": "summary"
+    },
+    "502": {
+        "file_id": 30,
+        "content": "import numpy as np\nimport os\nimport collections\nimport matplotlib.pyplot as plt\nfrom dm_control import mujoco\nfrom dm_control.rl import control\nfrom dm_control.suite import base\nfrom constants import DT, XML_DIR, START_ARM_POSE\nfrom constants import PUPPET_GRIPPER_POSITION_UNNORMALIZE_FN\nfrom constants import MASTER_GRIPPER_POSITION_NORMALIZE_FN\nfrom constants import PUPPET_GRIPPER_POSITION_NORMALIZE_FN\nfrom constants import PUPPET_GRIPPER_VELOCITY_NORMALIZE_FN\nimport IPython\ne = IPython.embed\nBOX_POSE = [None] # to be changed from outside\ndef make_sim_env(task_name):\n    \"\"\"\n    Environment for simulated robot bi-manual manipulation, with joint position control\n    Action space:      [left_arm_qpos (6),             # absolute joint position\n                        left_gripper_positions (1),    # normalized gripper position (0: close, 1: open)\n                        right_arm_qpos (6),            # absolute joint position\n                        right_gripper_positions (1),]  # normalized gripper position (0: close, 1: open)",
+        "type": "code",
+        "location": "/sim_env.py:1-26"
+    },
+    "503": {
+        "file_id": 30,
+        "content": "The code imports necessary libraries and defines a function called make_sim_env, which creates a simulation environment for robot bi-manual manipulation with joint position control. The action space consists of left arm joint positions, left gripper position (normalized), right arm joint positions, and right gripper position (normalized).",
+        "type": "comment"
+    },
+    "504": {
+        "file_id": 30,
+        "content": "    Observation space: {\"qpos\": Concat[ left_arm_qpos (6),         # absolute joint position\n                                        left_gripper_position (1),  # normalized gripper position (0: close, 1: open)\n                                        right_arm_qpos (6),         # absolute joint position\n                                        right_gripper_qpos (1)]     # normalized gripper position (0: close, 1: open)\n                        \"qvel\": Concat[ left_arm_qvel (6),         # absolute joint velocity (rad)\n                                        left_gripper_velocity (1),  # normalized gripper velocity (pos: opening, neg: closing)\n                                        right_arm_qvel (6),         # absolute joint velocity (rad)\n                                        right_gripper_qvel (1)]     # normalized gripper velocity (pos: opening, neg: closing)\n                        \"images\": {\"main\": (480x640x3)}        # h, w, c, dtype='uint8'\n    \"\"\"\n    if 'sim_transfer_cube' in task_name:",
+        "type": "code",
+        "location": "/sim_env.py:28-38"
+    },
+    "505": {
+        "file_id": 30,
+        "content": "This code defines the observation space for a simulation environment, including joint positions and velocities of both arms and gripper states, along with image input from a camera. It is specific to tasks involving transferring cubes.",
+        "type": "comment"
+    },
+    "506": {
+        "file_id": 30,
+        "content": "        xml_path = os.path.join(XML_DIR, f'bimanual_viperx_transfer_cube.xml')\n        physics = mujoco.Physics.from_xml_path(xml_path)\n        task = TransferCubeTask(random=False)\n        env = control.Environment(physics, task, time_limit=20, control_timestep=DT,\n                                  n_sub_steps=None, flat_observation=False)\n    elif 'sim_insertion' in task_name:\n        xml_path = os.path.join(XML_DIR, f'bimanual_viperx_insertion.xml')\n        physics = mujoco.Physics.from_xml_path(xml_path)\n        task = InsertionTask(random=False)\n        env = control.Environment(physics, task, time_limit=20, control_timestep=DT,\n                                  n_sub_steps=None, flat_observation=False)\n    else:\n        raise NotImplementedError\n    return env\nclass BimanualViperXTask(base.Task):\n    def __init__(self, random=None):\n        super().__init__(random=random)\n    def before_step(self, action, physics):\n        left_arm_action = action[:6]\n        right_arm_action = action[7:7+6]\n        normalized_left_gripper_action = action[6]",
+        "type": "code",
+        "location": "/sim_env.py:39-61"
+    },
+    "507": {
+        "file_id": 30,
+        "content": "The code sets up a bimanual ViperX environment with either a cube transfer or an insertion task. It first defines the XML path for the environment, then initializes physics from the path and a specific task (TransferCubeTask or InsertionTask) depending on the task_name. The Environment class is instantiated with these parameters, including time limit and control timestep. Finally, it returns the environment and initializes BimanualViperXTask which extends base.Task.",
+        "type": "comment"
+    },
+    "508": {
+        "file_id": 30,
+        "content": "        normalized_right_gripper_action = action[7+6]\n        left_gripper_action = PUPPET_GRIPPER_POSITION_UNNORMALIZE_FN(normalized_left_gripper_action)\n        right_gripper_action = PUPPET_GRIPPER_POSITION_UNNORMALIZE_FN(normalized_right_gripper_action)\n        full_left_gripper_action = [left_gripper_action, -left_gripper_action]\n        full_right_gripper_action = [right_gripper_action, -right_gripper_action]\n        env_action = np.concatenate([left_arm_action, full_left_gripper_action, right_arm_action, full_right_gripper_action])\n        super().before_step(env_action, physics)\n        return\n    def initialize_episode(self, physics):\n        \"\"\"Sets the state of the environment at the start of each episode.\"\"\"\n        super().initialize_episode(physics)\n    @staticmethod\n    def get_qpos(physics):\n        qpos_raw = physics.data.qpos.copy()\n        left_qpos_raw = qpos_raw[:8]\n        right_qpos_raw = qpos_raw[8:16]\n        left_arm_qpos = left_qpos_raw[:6]\n        right_arm_qpos = right_qpos_raw[:6]",
+        "type": "code",
+        "location": "/sim_env.py:62-84"
+    },
+    "509": {
+        "file_id": 30,
+        "content": "This code initializes the environment for each episode and before each step, performing actions on a puppet using gripper positions that are first normalized then unnormalized. The actions involve left and right arm movements as well as full gripper actions. It also retrieves the state of the environment using qpos from physics data.",
+        "type": "comment"
+    },
+    "510": {
+        "file_id": 30,
+        "content": "        left_gripper_qpos = [PUPPET_GRIPPER_POSITION_NORMALIZE_FN(left_qpos_raw[6])]\n        right_gripper_qpos = [PUPPET_GRIPPER_POSITION_NORMALIZE_FN(right_qpos_raw[6])]\n        return np.concatenate([left_arm_qpos, left_gripper_qpos, right_arm_qpos, right_gripper_qpos])\n    @staticmethod\n    def get_qvel(physics):\n        qvel_raw = physics.data.qvel.copy()\n        left_qvel_raw = qvel_raw[:8]\n        right_qvel_raw = qvel_raw[8:16]\n        left_arm_qvel = left_qvel_raw[:6]\n        right_arm_qvel = right_qvel_raw[:6]\n        left_gripper_qvel = [PUPPET_GRIPPER_VELOCITY_NORMALIZE_FN(left_qvel_raw[6])]\n        right_gripper_qvel = [PUPPET_GRIPPER_VELOCITY_NORMALIZE_FN(right_qvel_raw[6])]\n        return np.concatenate([left_arm_qvel, left_gripper_qvel, right_arm_qvel, right_gripper_qvel])\n    @staticmethod\n    def get_env_state(physics):\n        raise NotImplementedError\n    def get_observation(self, physics):\n        obs = collections.OrderedDict()\n        obs['qpos'] = self.get_qpos(physics)\n        obs['qvel'] = self.get_qvel(physics)",
+        "type": "code",
+        "location": "/sim_env.py:85-107"
+    },
+    "511": {
+        "file_id": 30,
+        "content": "This code defines two methods, `get_qpos` and `get_qvel`, which extract the joint positions and velocities from physics data. The left and right gripper positions and velocities are normalized using `PUPPET_GRIPPER_POSITION_NORMALIZE_FN` and `PUPPET_GRIPPER_VELOCITY_NORMALIZE_FN`. These values are then concatenated into observation arrays 'qpos' and 'qvel', which will be used for the environment state. The `get_env_state` method is not implemented yet, while `get_observation` combines the qpos and qvel observations in an ordered dictionary.",
+        "type": "comment"
+    },
+    "512": {
+        "file_id": 30,
+        "content": "        obs['env_state'] = self.get_env_state(physics)\n        obs['images'] = dict()\n        obs['images']['top'] = physics.render(height=480, width=640, camera_id='top')\n        obs['images']['left_wrist'] = physics.render(height=480, width=640, camera_id='left_wrist')\n        obs['images']['right_wrist'] = physics.render(height=480, width=640, camera_id='right_wrist')\n        # obs['images']['angle'] = physics.render(height=480, width=640, camera_id='angle')\n        # obs['images']['vis'] = physics.render(height=480, width=640, camera_id='front_close')\n        return obs\n    def get_reward(self, physics):\n        # return whether left gripper is holding the box\n        raise NotImplementedError\nclass TransferCubeTask(BimanualViperXTask):\n    def __init__(self, random=None):\n        super().__init__(random=random)\n        self.max_reward = 4\n    def initialize_episode(self, physics):\n        \"\"\"Sets the state of the environment at the start of each episode.\"\"\"\n        # TODO Notice: this function does not randomize the env configuration. Instead, set BOX_POSE from outside",
+        "type": "code",
+        "location": "/sim_env.py:108-130"
+    },
+    "513": {
+        "file_id": 30,
+        "content": "This code is defining a class `SimEnv` which returns the observation and reward in a bimanual task. It also includes methods for getting the environment state and calculating rewards based on left gripper holding the box. The `TransferCubeTask` inherits from `BimanualViperXTask` and initializes the environment at the start of each episode, with a maximum reward set to 4.",
+        "type": "comment"
+    },
+    "514": {
+        "file_id": 30,
+        "content": "        # reset qpos, control and box position\n        with physics.reset_context():\n            physics.named.data.qpos[:16] = START_ARM_POSE\n            np.copyto(physics.data.ctrl, START_ARM_POSE)\n            assert BOX_POSE[0] is not None\n            physics.named.data.qpos[-7:] = BOX_POSE[0]\n            # print(f\"{BOX_POSE=}\")\n        super().initialize_episode(physics)\n    @staticmethod\n    def get_env_state(physics):\n        env_state = physics.data.qpos.copy()[16:]\n        return env_state\n    def get_reward(self, physics):\n        # return whether left gripper is holding the box\n        all_contact_pairs = []\n        for i_contact in range(physics.data.ncon):\n            id_geom_1 = physics.data.contact[i_contact].geom1\n            id_geom_2 = physics.data.contact[i_contact].geom2\n            name_geom_1 = physics.model.id2name(id_geom_1, 'geom')\n            name_geom_2 = physics.model.id2name(id_geom_2, 'geom')\n            contact_pair = (name_geom_1, name_geom_2)\n            all_contact_pairs.append(contact_pair)",
+        "type": "code",
+        "location": "/sim_env.py:131-154"
+    },
+    "515": {
+        "file_id": 30,
+        "content": "Code resets the arm and box positions, gets the environment state by copying qpos values from 16th index onwards, and calculates the reward based on gripper contact with the box.",
+        "type": "comment"
+    },
+    "516": {
+        "file_id": 30,
+        "content": "        touch_left_gripper = (\"red_box\", \"vx300s_left/10_left_gripper_finger\") in all_contact_pairs\n        touch_right_gripper = (\"red_box\", \"vx300s_right/10_right_gripper_finger\") in all_contact_pairs\n        touch_table = (\"red_box\", \"table\") in all_contact_pairs\n        reward = 0\n        if touch_right_gripper:\n            reward = 1\n        if touch_right_gripper and not touch_table: # lifted\n            reward = 2\n        if touch_left_gripper: # attempted transfer\n            reward = 3\n        if touch_left_gripper and not touch_table: # successful transfer\n            reward = 4\n        return reward\nclass InsertionTask(BimanualViperXTask):\n    def __init__(self, random=None):\n        super().__init__(random=random)\n        self.max_reward = 4\n    def initialize_episode(self, physics):\n        \"\"\"Sets the state of the environment at the start of each episode.\"\"\"\n        # TODO Notice: this function does not randomize the env configuration. Instead, set BOX_POSE from outside\n        # reset qpos, control and box position",
+        "type": "code",
+        "location": "/sim_env.py:156-180"
+    },
+    "517": {
+        "file_id": 30,
+        "content": "This code snippet checks for the contact between different objects and assigns a reward based on those contacts. The 'InsertionTask' class initializes an episode by resetting the qpos, control, and box position. However, it currently does not randomize the environment configuration.",
+        "type": "comment"
+    },
+    "518": {
+        "file_id": 30,
+        "content": "        with physics.reset_context():\n            physics.named.data.qpos[:16] = START_ARM_POSE\n            np.copyto(physics.data.ctrl, START_ARM_POSE)\n            assert BOX_POSE[0] is not None\n            physics.named.data.qpos[-7*2:] = BOX_POSE[0] # two objects\n            # print(f\"{BOX_POSE=}\")\n        super().initialize_episode(physics)\n    @staticmethod\n    def get_env_state(physics):\n        env_state = physics.data.qpos.copy()[16:]\n        return env_state\n    def get_reward(self, physics):\n        # return whether peg touches the pin\n        all_contact_pairs = []\n        for i_contact in range(physics.data.ncon):\n            id_geom_1 = physics.data.contact[i_contact].geom1\n            id_geom_2 = physics.data.contact[i_contact].geom2\n            name_geom_1 = physics.model.id2name(id_geom_1, 'geom')\n            name_geom_2 = physics.model.id2name(id_geom_2, 'geom')\n            contact_pair = (name_geom_1, name_geom_2)\n            all_contact_pairs.append(contact_pair)\n        touch_right_gripper = (\"red_peg\", \"vx300s_right/10_right_gripper_finger\") in all_contact_pairs",
+        "type": "code",
+        "location": "/sim_env.py:181-205"
+    },
+    "519": {
+        "file_id": 30,
+        "content": "This code is part of a physics simulation environment setup. It initializes the episode by setting up the arm and box positions, and then defines methods to get the environment state and reward based on contact between objects in the simulation.",
+        "type": "comment"
+    },
+    "520": {
+        "file_id": 30,
+        "content": "        touch_left_gripper = (\"socket-1\", \"vx300s_left/10_left_gripper_finger\") in all_contact_pairs or \\\n                             (\"socket-2\", \"vx300s_left/10_left_gripper_finger\") in all_contact_pairs or \\\n                             (\"socket-3\", \"vx300s_left/10_left_gripper_finger\") in all_contact_pairs or \\\n                             (\"socket-4\", \"vx300s_left/10_left_gripper_finger\") in all_contact_pairs\n        peg_touch_table = (\"red_peg\", \"table\") in all_contact_pairs\n        socket_touch_table = (\"socket-1\", \"table\") in all_contact_pairs or \\\n                             (\"socket-2\", \"table\") in all_contact_pairs or \\\n                             (\"socket-3\", \"table\") in all_contact_pairs or \\\n                             (\"socket-4\", \"table\") in all_contact_pairs\n        peg_touch_socket = (\"red_peg\", \"socket-1\") in all_contact_pairs or \\\n                           (\"red_peg\", \"socket-2\") in all_contact_pairs or \\\n                           (\"red_peg\", \"socket-3\") in all_contact_pairs or \\",
+        "type": "code",
+        "location": "/sim_env.py:206-218"
+    },
+    "521": {
+        "file_id": 30,
+        "content": "This code checks if the left gripper finger of vx300s_left is in contact with any of the four sockets, and also verifies if the red peg is touching the table, a socket, or itself. The purpose seems to be detecting specific object interactions in a simulated environment.",
+        "type": "comment"
+    },
+    "522": {
+        "file_id": 30,
+        "content": "                           (\"red_peg\", \"socket-4\") in all_contact_pairs\n        pin_touched = (\"red_peg\", \"pin\") in all_contact_pairs\n        reward = 0\n        if touch_left_gripper and touch_right_gripper: # touch both\n            reward = 1\n        if touch_left_gripper and touch_right_gripper and (not peg_touch_table) and (not socket_touch_table): # grasp both\n            reward = 2\n        if peg_touch_socket and (not peg_touch_table) and (not socket_touch_table): # peg and socket touching\n            reward = 3\n        if pin_touched: # successful insertion\n            reward = 4\n        return reward\ndef get_action(master_bot_left, master_bot_right):\n    action = np.zeros(14)\n    # arm action\n    action[:6] = master_bot_left.dxl.joint_states.position[:6]\n    action[7:7+6] = master_bot_right.dxl.joint_states.position[:6]\n    # gripper action\n    left_gripper_pos = master_bot_left.dxl.joint_states.position[7]\n    right_gripper_pos = master_bot_right.dxl.joint_states.position[7]\n    normalized_left_pos = MASTER_GRIPPER_POSITION_NORMALIZE_FN(left_gripper_pos)",
+        "type": "code",
+        "location": "/sim_env.py:219-242"
+    },
+    "523": {
+        "file_id": 30,
+        "content": "The code is defining a function to determine rewards based on contact between different objects and checking gripper positions. It also includes a function for generating action sequences, setting arm joint positions, and normalizing left gripper position.",
+        "type": "comment"
+    },
+    "524": {
+        "file_id": 30,
+        "content": "    normalized_right_pos = MASTER_GRIPPER_POSITION_NORMALIZE_FN(right_gripper_pos)\n    action[6] = normalized_left_pos\n    action[7+6] = normalized_right_pos\n    return action\ndef test_sim_teleop():\n    \"\"\" Testing teleoperation in sim with ALOHA. Requires hardware and ALOHA repo to work. \"\"\"\n    from interbotix_xs_modules.arm import InterbotixManipulatorXS\n    BOX_POSE[0] = [0.2, 0.5, 0.05, 1, 0, 0, 0]\n    # source of data\n    master_bot_left = InterbotixManipulatorXS(robot_model=\"wx250s\", group_name=\"arm\", gripper_name=\"gripper\",\n                                              robot_name=f'master_left', init_node=True)\n    master_bot_right = InterbotixManipulatorXS(robot_model=\"wx250s\", group_name=\"arm\", gripper_name=\"gripper\",\n                                              robot_name=f'master_right', init_node=False)\n    # setup the environment\n    env = make_sim_env('sim_transfer_cube')\n    ts = env.reset()\n    episode = [ts]\n    # setup plotting\n    ax = plt.subplot()\n    plt_img = ax.imshow(ts.observation['images']['angle'])",
+        "type": "code",
+        "location": "/sim_env.py:243-266"
+    },
+    "525": {
+        "file_id": 30,
+        "content": "This code sets up a teleoperation test in the simulation environment using ALOHA and InterbotixManipulatorXS for left and right arms. It initializes the environment, resets it, and starts an episode by adding the first timestep to the episode list. It also sets up plotting for visualizing the simulation's observation images.",
+        "type": "comment"
+    },
+    "526": {
+        "file_id": 30,
+        "content": "    plt.ion()\n    for t in range(1000):\n        action = get_action(master_bot_left, master_bot_right)\n        ts = env.step(action)\n        episode.append(ts)\n        plt_img.set_data(ts.observation['images']['angle'])\n        plt.pause(0.02)\nif __name__ == '__main__':\n    test_sim_teleop()",
+        "type": "code",
+        "location": "/sim_env.py:267-279"
+    },
+    "527": {
+        "file_id": 30,
+        "content": "This code enables interactive plotting of the simulation environment's observations and takes input actions for a specific number of time steps. It utilizes matplotlib's `ion()` function to enable interactive plotting, and then iterates through 1000 time steps, getting actions from `get_action` and updating the plot using `plt_img.set_data`. The `test_sim_teleop()` function is called when the script is run directly.",
+        "type": "comment"
+    },
+    "528": {
+        "file_id": 31,
+        "content": "/train_actuator_network.py",
+        "type": "filepath"
+    },
+    "529": {
+        "file_id": 31,
+        "content": "The code trains a neural network, visualizes predictions, logs progress, handles exceptions, performs forward/backward passes, updates policy state, saves checkpoints, and sets up data loaders for validation. It plots and saves commanded, observed, and predicted angular speeds for an actuator network, initializes a transformer-based prediction network, calculates MSE loss, normalizes data, and trains the actuator network if necessary.",
+        "type": "summary"
+    },
+    "530": {
+        "file_id": 31,
+        "content": "import numpy as np\nimport torch\nfrom torch import nn\nfrom torch.nn import functional as F\nfrom torch.utils.data import DataLoader\nimport os\nimport h5py\nimport math\nimport wandb\nimport pickle\nimport matplotlib.pyplot as plt\nfrom copy import deepcopy\nfrom tqdm import tqdm\nfrom utils import find_all_hdf5\nfrom imitate_episodes import repeater, compute_dict_mean\nimport IPython\ne = IPython.embed\ndef main():\n    ### Idea\n    # input : o o o o o o # observed speed \n    # target: a a a a a a # commanded speed\n    # at test time, input desired speed profile and convert that to command\n    #########################################################\n    history_len = 50\n    future_len = 50\n    prediction_len = 50\n    batch_size_train = 16\n    batch_size_val  = 16\n    lr = 1e-4\n    weight_decay = 1e-4\n    num_steps = 10000\n    validate_every = 2000\n    save_every = 2000\n    expr_name = f'actuator_network_test_{history_len}_{future_len}_{prediction_len}'\n    ckpt_dir = f'/scr/tonyzhao/train_logs/{expr_name}' if os.getlogin() == 'tonyzhao' else f'./ckpts/{expr_name}'",
+        "type": "code",
+        "location": "/train_actuator_network.py:2-41"
+    },
+    "531": {
+        "file_id": 31,
+        "content": "This code is importing necessary libraries and defining parameters for training an actuator network. The actuator network takes in observed speed inputs and converts them into desired commanded speeds at test time. It will train the network using specified batch sizes, learning rate, weight decay, number of steps, and save checkpoints periodically.",
+        "type": "comment"
+    },
+    "532": {
+        "file_id": 31,
+        "content": "    dataset_dir = '/scr/tonyzhao/compressed_datasets/aloha_mobile_fork/' if os.getlogin() == 'tonyzhao' else '/home/zfu/data/aloha_mobile_fork/'\n    #########################################################\n    assert(history_len + future_len >= prediction_len)\n    assert(future_len % prediction_len == 0)\n    wandb.init(project=\"mobile-aloha2\", reinit=True, entity=\"mobile-aloha2\", name=expr_name) # mode='disabled', \n    if not os.path.isdir(ckpt_dir):\n        os.makedirs(ckpt_dir)\n    dataset_path_list = find_all_hdf5(dataset_dir, skip_mirrored_data=True)\n    dataset_path_list = [n for n in dataset_path_list if 'replayed' in n]\n    num_episodes = len(dataset_path_list)\n    # obtain train test split\n    train_ratio = 0.9\n    shuffled_episode_ids = np.random.permutation(num_episodes)\n    train_episode_ids = shuffled_episode_ids[:int(train_ratio * num_episodes)]\n    val_episode_ids = shuffled_episode_ids[int(train_ratio * num_episodes):]\n    print(f'\\n\\nData from: {dataset_dir}\\n- Train on {len(train_episode_ids)} episodes\\n- Test on {len(val_episode_ids)} episodes\\n\\n')",
+        "type": "code",
+        "location": "/train_actuator_network.py:42-61"
+    },
+    "533": {
+        "file_id": 31,
+        "content": "Code initializes variables, asserts conditions, initializes a wandb project, checks if a directory exists, finds HDF5 files in the dataset directory, calculates train and validation split, and prints information about the data source.",
+        "type": "comment"
+    },
+    "534": {
+        "file_id": 31,
+        "content": "    # obtain normalization stats for qpos and action\n    # if load_pretrain:\n    #     with open(os.path.join('/home/zfu/interbotix_ws/src/act/ckpts/pretrain_all', 'dataset_stats.pkl'), 'rb') as f:\n    #         norm_stats = pickle.load(f)\n    #     print('Loaded pretrain dataset stats')\n    norm_stats, all_episode_len = get_norm_stats(dataset_path_list)\n    train_episode_len = [all_episode_len[i] for i in train_episode_ids]\n    val_episode_len = [all_episode_len[i] for i in val_episode_ids]\n    assert(all_episode_len[0] % prediction_len == 0)\n    # save dataset stats\n    stats_path = os.path.join(ckpt_dir, f'actuator_net_stats.pkl')\n    with open(stats_path, 'wb') as f:\n        pickle.dump(norm_stats, f)\n    # construct dataset and dataloader\n    train_dataset = EpisodicDataset(dataset_path_list, norm_stats, train_episode_ids, train_episode_len, history_len, future_len, prediction_len)\n    val_dataset = EpisodicDataset(dataset_path_list, norm_stats, val_episode_ids, val_episode_len, history_len, future_len, prediction_len)",
+        "type": "code",
+        "location": "/train_actuator_network.py:63-80"
+    },
+    "535": {
+        "file_id": 31,
+        "content": "This code loads normalization stats for qpos and action, either from a file or by calling get_norm_stats function. It then calculates train and val episode lengths based on episode IDs. The code asserts that the all_episode_len is divisible by prediction_len. Next, it saves the dataset stats in a pickle file, constructs train and val datasets using EpisodicDataset class, and utilizes these datasets for further training.",
+        "type": "comment"
+    },
+    "536": {
+        "file_id": 31,
+        "content": "    train_dataloader = DataLoader(train_dataset, batch_size=batch_size_train, shuffle=True, pin_memory=True, num_workers=1, prefetch_factor=1)\n    val_dataloader = DataLoader(val_dataset, batch_size=batch_size_val, shuffle=True, pin_memory=True, num_workers=1, prefetch_factor=1)\n    policy = ActuatorNetwork(prediction_len).cuda()\n    optimizer = torch.optim.AdamW(policy.parameters(), lr=lr, weight_decay=weight_decay)\n    n_parameters = sum(p.numel() for p in policy.parameters() if p.requires_grad)\n    print(\"number of parameters: %.2fM\" % (n_parameters/1e6,))\n    min_val_loss = np.inf\n    best_ckpt_info = None\n    train_dataloader = repeater(train_dataloader)\n    for step in tqdm(range(num_steps+1)):\n        # validation\n        if step % validate_every == 0:\n            print('validating')\n            with torch.inference_mode():\n                policy.eval()\n                validation_dicts = []\n                for batch_idx, data in enumerate(val_dataloader):\n                    observed_speed, commanded_speed = data",
+        "type": "code",
+        "location": "/train_actuator_network.py:81-102"
+    },
+    "537": {
+        "file_id": 31,
+        "content": "Creates data loaders for training and validation datasets. Initializes ActuatorNetwork model, optimizer, and prints the number of parameters. Sets initial minimum validation loss and best checkpoint information. Repeats training data loader for iterations. Validates model performance at specified intervals.",
+        "type": "comment"
+    },
+    "538": {
+        "file_id": 31,
+        "content": "                    out, forward_dict = policy(observed_speed.cuda(), commanded_speed.cuda())\n                    validation_dicts.append(forward_dict)\n                validation_summary = compute_dict_mean(validation_dicts)\n                epoch_val_loss = validation_summary['loss']\n                if epoch_val_loss < min_val_loss:\n                    min_val_loss = epoch_val_loss\n                    best_ckpt_info = (step, min_val_loss, deepcopy(policy.state_dict()))\n            for k in list(validation_summary.keys()):\n                validation_summary[f'val_{k}'] = validation_summary.pop(k)            \n            wandb.log(validation_summary, step=step)\n            print(f'Val loss:   {epoch_val_loss:.5f}')\n            summary_string = ''\n            for k, v in validation_summary.items():\n                summary_string += f'{k}: {v.item():.3f} '\n            print(summary_string)\n            visualize_prediction(dataset_path_list, val_episode_ids, policy, norm_stats, history_len, future_len, prediction_len, ckpt_dir, step, 'val')",
+        "type": "code",
+        "location": "/train_actuator_network.py:103-121"
+    },
+    "539": {
+        "file_id": 31,
+        "content": "This code measures the validation loss during training, keeps track of the best validation loss so far, logs the current validation summary to Wandb, and prints out a summary for the current epoch. It also visualizes predictions with a separate function.",
+        "type": "comment"
+    },
+    "540": {
+        "file_id": 31,
+        "content": "            visualize_prediction(dataset_path_list, train_episode_ids, policy, norm_stats, history_len, future_len, prediction_len, ckpt_dir, step, 'train')\n        # training\n        policy.train()\n        optimizer.zero_grad()\n        data = next(train_dataloader)\n        observed_speed, commanded_speed = data\n        out, forward_dict = policy(observed_speed.cuda(), commanded_speed.cuda())\n        # backward\n        loss = forward_dict['loss']\n        loss.backward()\n        optimizer.step()\n        wandb.log(forward_dict, step=step) # not great, make training 1-2% slower\n        if step % save_every == 0:\n            ckpt_path = os.path.join(ckpt_dir, f'actuator_net_step_{step}.ckpt')\n            torch.save(policy.state_dict(), ckpt_path)\n    ckpt_path = os.path.join(ckpt_dir, f'actuator_net_last.ckpt')\n    torch.save(policy.state_dict(), ckpt_path)\n    best_step, min_val_loss, best_state_dict = best_ckpt_info\n    ckpt_path = os.path.join(ckpt_dir, f'actuator_net_step_{best_step}.ckpt')\n    torch.save(best_state_dict, ckpt_path)",
+        "type": "code",
+        "location": "/train_actuator_network.py:122-146"
+    },
+    "541": {
+        "file_id": 31,
+        "content": "The code is training an actuator network policy using data from a dataloader. It performs forward and backward passes to calculate loss, updates the policy's state with an optimizer, logs progress to W&B, saves checkpoints at specified intervals, and overwrites the latest checkpoint with the final step of training.",
+        "type": "comment"
+    },
+    "542": {
+        "file_id": 31,
+        "content": "    print(f'Training finished:\\nval loss {min_val_loss:.6f} at step {best_step}')\ndef visualize_prediction(dataset_path_list, episode_ids, policy, norm_stats, history_len, future_len, prediction_len, ckpt_dir, step, name):\n    num_vis = 2\n    episode_ids = episode_ids[:num_vis]\n    vis_path = [dataset_path_list[i] for i in episode_ids]\n    for i, dataset_path in enumerate(vis_path):\n        try:\n            with h5py.File(dataset_path, 'r') as root:\n                commanded_speed = root['/base_action'][()]\n                observed_speed = root['/obs_tracer'][()]\n        except Exception as ee:\n            print(f'Error loading {dataset_path} in get_norm_stats')\n            print(ee)\n            quit()\n        # commanded_speed = (commanded_speed - norm_stats[\"commanded_speed_mean\"]) / norm_stats[\"commanded_speed_std\"]\n        norm_observed_speed = (observed_speed - norm_stats[\"observed_speed_mean\"]) / norm_stats[\"observed_speed_std\"]\n        out_unnorm_fn = lambda x: (x * norm_stats[\"commanded_speed_std\"]) + norm_stats[\"commanded_speed_mean\"]",
+        "type": "code",
+        "location": "/train_actuator_network.py:147-167"
+    },
+    "543": {
+        "file_id": 31,
+        "content": "This code segment is responsible for training a neural network and visualizing the predictions. It prints the minimum validation loss and the corresponding step number when training finishes. The visualize_prediction function reads data from a dataset path list, selects episodes for visualization, loads data from HDF5 files, normalizes observed speeds, and provides an unnormalized output function. It also handles potential exceptions during data loading.",
+        "type": "comment"
+    },
+    "544": {
+        "file_id": 31,
+        "content": "        history_pad = np.zeros((history_len, 2))\n        future_pad = np.zeros((future_len, 2))\n        norm_observed_speed = np.concatenate([history_pad, norm_observed_speed, future_pad], axis=0)\n        episode_len = commanded_speed.shape[0]\n        all_pred = []\n        for t in range(0, episode_len, prediction_len):\n            offset_start_ts = t + history_len\n            policy_input = norm_observed_speed[offset_start_ts-history_len: offset_start_ts+future_len]\n            policy_input = torch.from_numpy(policy_input).float().unsqueeze(dim=0).cuda()\n            pred = policy(policy_input)\n            pred = pred.detach().cpu().numpy()[0]\n            all_pred += out_unnorm_fn(pred).tolist()\n        all_pred = np.array(all_pred)\n        plot_path = os.path.join(ckpt_dir, f'{name}{i}_step{step}_linear')\n        plt.figure()\n        plt.plot(commanded_speed[:, 0], label='commanded_speed_linear')\n        plt.plot(observed_speed[:, 0], label='observed_speed_linear')\n        plt.plot(all_pred[:, 0],  label='pred_commanded_speed_linear')",
+        "type": "code",
+        "location": "/train_actuator_network.py:169-189"
+    },
+    "545": {
+        "file_id": 31,
+        "content": "This code segment is preparing input data and feeding it to a neural network policy for prediction. The predicted commanded speed values are then plotted alongside the actual commanded and observed speeds in a plot.",
+        "type": "comment"
+    },
+    "546": {
+        "file_id": 31,
+        "content": "        # plot vertical grey dotted lines every prediction_len\n        for t in range(0, episode_len, prediction_len):\n            plt.axvline(t, linestyle='--', color='grey')\n        plt.legend()\n        plt.savefig(plot_path)\n        plt.close()\n        plot_path = os.path.join(ckpt_dir, f'{name}{i}_step{step}_angular')\n        plt.figure()\n        plt.plot(commanded_speed[:, 1], label='commanded_speed_angular')\n        plt.plot(observed_speed[:, 1], label='observed_speed_angular')\n        plt.plot(all_pred[:, 1], label='pred_commanded_speed_angular')\n        # plot vertical dotted lines every prediction_len\n        for t in range(0, episode_len, prediction_len):\n            plt.axvline(t, linestyle='--', color='grey')\n        plt.legend()\n        plt.savefig(plot_path)\n        plt.close()\nclass ActuatorNetwork(nn.Module):\n    def __init__(self, prediction_len):\n        super().__init__()\n        d_model = 256\n        encoder_layer = nn.TransformerEncoderLayer(d_model=d_model, nhead=8)\n        self.transformer = nn.TransformerEncoder(encoder_layer, num_layers=3)",
+        "type": "code",
+        "location": "/train_actuator_network.py:190-217"
+    },
+    "547": {
+        "file_id": 31,
+        "content": "The code plots the commanded, observed, and predicted angular speeds of an actuator network. It saves the resulting plot in a specified directory. The code also includes vertical dotted lines at regular intervals for visual reference. The ActuatorNetwork class initializes a transformer encoder with a specific number of layers and heads.",
+        "type": "comment"
+    },
+    "548": {
+        "file_id": 31,
+        "content": "        self.pe = PositionalEncoding(d_model)\n        self.in_proj = nn.Linear(2, d_model)\n        self.out_proj = nn.Linear(d_model, 2)\n        self.prediction_len = prediction_len\n    def forward(self, src, tgt=None):\n        if tgt is not None: # training time\n            # (batch, seq, feature) -> (seq, batch, feature)\n            src = self.in_proj(src)\n            src = torch.einsum('b s d -> s b d', src)\n            src = self.pe(src)\n            out = self.transformer(src)\n            tgt = torch.einsum('b s d -> s b d', tgt)\n            assert(self.prediction_len == tgt.shape[0])\n            out = out[0: self.prediction_len] # take first few tokens only for prediction\n            out = self.out_proj(out)\n            l2_loss = loss = F.mse_loss(out, tgt)\n            loss_dict = {'loss': l2_loss}\n            out = torch.einsum('s b d -> b s d', out)\n            return out, loss_dict\n        else:\n            src = self.in_proj(src)\n            src = torch.einsum('b s d -> s b d', src)\n            src = self.pe(src)",
+        "type": "code",
+        "location": "/train_actuator_network.py:218-243"
+    },
+    "549": {
+        "file_id": 31,
+        "content": "This code initializes a network for transformer-based prediction. It includes a PositionalEncoding layer, input and output projection layers, and a prediction length parameter. During training time, it rearranges input data, applies positional encoding, passes through the transformer, and calculates an MSE loss between predicted and target outputs. It returns predicted outputs and loss dictionary.",
+        "type": "comment"
+    },
+    "550": {
+        "file_id": 31,
+        "content": "            out = self.transformer(src)\n            out = out[0: self.prediction_len] # take first few tokens only for prediction\n            out = self.out_proj(out)\n            out = torch.einsum('s b d -> b s d', out)\n            return out\nclass PositionalEncoding(nn.Module):\n    def __init__(self, d_model: int, dropout: float = 0.1, max_len: int = 5000):\n        super().__init__()\n        self.dropout = nn.Dropout(p=dropout)\n        position = torch.arange(max_len).unsqueeze(1)\n        div_term = torch.exp(torch.arange(0, d_model, 2) * (-math.log(10000.0) / d_model))\n        pe = torch.zeros(max_len, 1, d_model)\n        pe[:, 0, 0::2] = torch.sin(position * div_term)\n        pe[:, 0, 1::2] = torch.cos(position * div_term)\n        self.register_buffer('pe', pe)\n    def forward(self, x):\n        \"\"\"\n        Arguments:\n            x: Tensor, shape ``[seq_len, batch_size, embedding_dim]``\n        \"\"\"\n        x = x + self.pe[:x.size(0)]\n        return self.dropout(x)\ndef get_norm_stats(dataset_path_list):\n    all_commanded_speed = []",
+        "type": "code",
+        "location": "/train_actuator_network.py:244-272"
+    },
+    "551": {
+        "file_id": 31,
+        "content": "train_actuator_network.py:243-271 - Applies transformer and positional encoding to source data, extracts the first few tokens for prediction, and then rearranges the output.\nPositionalEncoding - Generates positional encodings of a given size and applies them as an additional dimension in an embedding layer.",
+        "type": "comment"
+    },
+    "552": {
+        "file_id": 31,
+        "content": "    all_observed_speed = []\n    all_episode_len = []\n    for dataset_path in dataset_path_list:\n        try:\n            with h5py.File(dataset_path, 'r') as root:\n                commanded_speed = root['/base_action'][()]\n                observed_speed = root['/obs_tracer'][()]\n        except Exception as e:\n            print(f'Error loading {dataset_path} in get_norm_stats')\n            print(e)\n            quit()\n        all_commanded_speed.append(torch.from_numpy(commanded_speed))\n        all_observed_speed.append(torch.from_numpy(observed_speed))\n        all_episode_len.append(len(commanded_speed))\n    all_commanded_speed = torch.cat(all_commanded_speed, dim=0)\n    all_observed_speed = torch.cat(all_observed_speed, dim=0)\n    # normalize all_commanded_speed\n    commanded_speed_mean = all_commanded_speed.mean(dim=[0]).float()\n    commanded_speed_std = all_commanded_speed.std(dim=[0]).float()\n    commanded_speed_std = torch.clip(commanded_speed_std, 1e-2, np.inf) # clipping\n    # normalize all_observed_speed",
+        "type": "code",
+        "location": "/train_actuator_network.py:273-295"
+    },
+    "553": {
+        "file_id": 31,
+        "content": "This code loads and normalizes commanded and observed speed data from multiple datasets. It calculates the mean and standard deviation for both sets of data, clips any outliers in the standard deviation, and stores the normalized data for further analysis or training purposes.",
+        "type": "comment"
+    },
+    "554": {
+        "file_id": 31,
+        "content": "    observed_speed_mean = all_observed_speed.mean(dim=[0]).float()\n    observed_speed_std = all_observed_speed.std(dim=[0]).float()\n    observed_speed_std = torch.clip(observed_speed_std, 1e-2, np.inf) # clipping\n    stats = {\"commanded_speed_mean\": commanded_speed_mean.numpy(), \"commanded_speed_std\": commanded_speed_std.numpy(),\n             \"observed_speed_mean\": observed_speed_mean.numpy(), \"observed_speed_std\": observed_speed_std.numpy()}\n    return stats, all_episode_len\nclass EpisodicDataset(torch.utils.data.Dataset):\n    def __init__(self, dataset_path_list, norm_stats, episode_ids, episode_len, history_len, future_len, prediction_len):\n        super(EpisodicDataset).__init__()\n        self.episode_ids = episode_ids\n        self.dataset_path_list = dataset_path_list\n        self.norm_stats = norm_stats\n        self.episode_len = episode_len\n        self.cumulative_len = np.cumsum(self.episode_len)\n        self.max_episode_len = max(episode_len)\n        self.history_len = history_len\n        self.future_len = future_len",
+        "type": "code",
+        "location": "/train_actuator_network.py:296-316"
+    },
+    "555": {
+        "file_id": 31,
+        "content": "This code calculates the mean and standard deviation of observed speeds, clips the standard deviation to prevent extreme values, and stores these statistics in a dictionary. The dictionary contains the means and standard deviations for both commanded and observed speeds. The code also defines an EpisodicDataset class that initializes with dataset paths, normalization stats, episode IDs, episode lengths, history length, future length, and prediction length.",
+        "type": "comment"
+    },
+    "556": {
+        "file_id": 31,
+        "content": "        self.prediction_len = prediction_len\n        self.is_sim = False\n        self.history_pad = np.zeros((self.history_len, 2))\n        self.future_pad = np.zeros((self.future_len, 2))\n        self.prediction_pad = np.zeros((self.prediction_len, 2))\n        self.__getitem__(0) # initialize self.is_sim\n    def __len__(self):\n        return sum(self.episode_len)\n    def _locate_transition(self, index):\n        assert index < self.cumulative_len[-1]\n        episode_index = np.argmax(self.cumulative_len > index) # argmax returns first True index\n        start_ts = index - (self.cumulative_len[episode_index] - self.episode_len[episode_index])\n        episode_id = self.episode_ids[episode_index]\n        return episode_id, start_ts\n    def __getitem__(self, index):\n        episode_id, start_ts = self._locate_transition(index)\n        dataset_path = self.dataset_path_list[episode_id]\n        try:\n            # print(dataset_path)\n            with h5py.File(dataset_path, 'r') as root:\n                commanded_speed = root['/base_action'][()]",
+        "type": "code",
+        "location": "/train_actuator_network.py:317-340"
+    },
+    "557": {
+        "file_id": 31,
+        "content": "Initializes attributes and checks if it is a simulation. Returns length based on episode lengths. Locates transition index, finds the dataset path, and reads commanded speed from the HDF5 file.",
+        "type": "comment"
+    },
+    "558": {
+        "file_id": 31,
+        "content": "                observed_speed = root['/obs_tracer'][()]\n                observed_speed = np.concatenate([self.history_pad, observed_speed, self.future_pad], axis=0)\n                commanded_speed = np.concatenate([commanded_speed, self.prediction_pad], axis=0)\n                offset_start_ts = start_ts + self.history_len\n                commanded_speed = commanded_speed[start_ts: start_ts+self.prediction_len]\n                observed_speed = observed_speed[offset_start_ts-self.history_len: offset_start_ts+self.future_len]\n            commanded_speed = torch.from_numpy(commanded_speed).float()\n            observed_speed = torch.from_numpy(observed_speed).float()\n            # normalize to mean 0 std 1\n            commanded_speed = (commanded_speed - self.norm_stats[\"commanded_speed_mean\"]) / self.norm_stats[\"commanded_speed_std\"]\n            observed_speed = (observed_speed - self.norm_stats[\"observed_speed_mean\"]) / self.norm_stats[\"observed_speed_std\"]\n        except:\n            print(f'Error loading {dataset_path} in __getitem__')",
+        "type": "code",
+        "location": "/train_actuator_network.py:341-357"
+    },
+    "559": {
+        "file_id": 31,
+        "content": "This code is preparing input data for a machine learning model. It concatenates historical and future observations with commanded speeds, adjusts the timestamps, and normalizes the data to have zero mean and unit standard deviation. If there's an error loading the dataset, it prints an error message.",
+        "type": "comment"
+    },
+    "560": {
+        "file_id": 31,
+        "content": "            quit()\n        # print(image_data.dtype, qpos_data.dtype, action_data.dtype, is_pad.dtype)\n        return observed_speed, commanded_speed\nif __name__ == '__main__':\n    main()",
+        "type": "code",
+        "location": "/train_actuator_network.py:358-367"
+    },
+    "561": {
+        "file_id": 31,
+        "content": "This code appears to be part of a program that trains an actuator network. It defines a function, possibly for training the actuator network, which may take in image data, joint position data, and other related data, calculates observed and commanded speeds, and returns these values. The code also includes a quit() command and some print statements for debugging purposes. Lastly, there is an if __name__ == '__main__': statement that suggests this code could be executed directly as a main program when the script is run.",
+        "type": "comment"
+    },
+    "562": {
+        "file_id": 32,
+        "content": "/train_latent_model.py",
+        "type": "filepath"
+    },
+    "563": {
+        "file_id": 32,
+        "content": "The code uses the ACT-Plus-Plus framework for robot manipulation, incorporating deep reinforcement learning and latent models with visual inputs. It saves and plots training curves while supporting customization through command-line arguments, adding new \"--vq_class\" and \"--vq_dim\" options for the latent model's class and dimensionality.",
+        "type": "summary"
+    },
+    "564": {
+        "file_id": 32,
+        "content": "import torch\nimport numpy as np\nimport os\nimport pickle\nimport argparse\nimport matplotlib.pyplot as plt\nfrom copy import deepcopy\nfrom tqdm import tqdm\nfrom einops import rearrange\nimport torch.nn.functional as F\nfrom constants import DT\nfrom constants import PUPPET_GRIPPER_JOINT_OPEN\nfrom utils import load_data # data functions\nfrom utils import sample_box_pose, sample_insertion_pose # robot functions\nfrom utils import compute_dict_mean, set_seed, detach_dict # helper functions\nfrom policy import ACTPolicy, CNNMLPPolicy\nfrom visualize_episodes import save_videos\nfrom detr.models.latent_model import Latent_Model_Transformer\nfrom sim_env import BOX_POSE\nimport IPython\ne = IPython.embed\ndef main(args):\n    set_seed(1)\n    # command line parameters\n    is_eval = args['eval']\n    ckpt_dir = args['ckpt_dir']\n    policy_class = args['policy_class']\n    onscreen_render = args['onscreen_render']\n    task_name = args['task_name']\n    batch_size_train = args['batch_size']\n    batch_size_val = args['batch_size']\n    num_epochs = args['num_epochs']",
+        "type": "code",
+        "location": "/train_latent_model.py:1-36"
+    },
+    "565": {
+        "file_id": 32,
+        "content": "The code imports necessary libraries, defines functions for robot manipulation and data processing. It initializes parameters from command line inputs and sets a seed for reproducibility. This script aims to train a latent model in the ACT-Plus-Plus framework.",
+        "type": "comment"
+    },
+    "566": {
+        "file_id": 32,
+        "content": "    # get task parameters\n    is_sim = task_name[:4] == 'sim_'\n    if is_sim:\n        from constants import SIM_TASK_CONFIGS\n        task_config = SIM_TASK_CONFIGS[task_name]\n    else:\n        from aloha_scripts.constants import TASK_CONFIGS\n        task_config = TASK_CONFIGS[task_name]\n    dataset_dir = task_config['dataset_dir']\n    num_episodes = task_config['num_episodes']\n    episode_len = task_config['episode_len']\n    camera_names = task_config['camera_names']\n    name_filter = task_config.get('name_filter', lambda n: True)\n    # fixed parameters\n    state_dim = 14\n    lr_backbone = 1e-5\n    backbone = 'resnet18'\n    if policy_class == 'ACT':\n        enc_layers = 4\n        dec_layers = 7\n        nheads = 8\n        policy_config = {'lr': args['lr'],\n                         'num_queries': args['chunk_size'],\n                         'kl_weight': args['kl_weight'],\n                         'hidden_dim': args['hidden_dim'],\n                         'dim_feedforward': args['dim_feedforward'],\n                         'lr_backbone': lr_backbone,",
+        "type": "code",
+        "location": "/train_latent_model.py:38-65"
+    },
+    "567": {
+        "file_id": 32,
+        "content": "This code retrieves task parameters from the task name and configuration files, sets fixed parameters for the model, and assigns values to variables like dataset_dir, num_episodes, episode_len, camera_names. The code also applies a lambda function as a name filter, if specified in the configuration file.",
+        "type": "comment"
+    },
+    "568": {
+        "file_id": 32,
+        "content": "                         'backbone': backbone,\n                         'enc_layers': enc_layers,\n                         'dec_layers': dec_layers,\n                         'nheads': nheads,\n                         'camera_names': camera_names,\n                         'vq': True,\n                         'vq_class': args['vq_class'],\n                         'vq_dim': args['vq_dim'],\n                         }\n    elif policy_class == 'CNNMLP':\n        policy_config = {'lr': args['lr'], 'lr_backbone': lr_backbone, 'backbone' : backbone, 'num_queries': 1,\n                         'camera_names': camera_names,}\n    else:\n        raise NotImplementedError\n    config = {\n        'num_epochs': num_epochs,\n        'ckpt_dir': ckpt_dir,\n        'episode_len': episode_len,\n        'state_dim': state_dim,\n        'lr': args['lr'],\n        'policy_class': policy_class,\n        'onscreen_render': onscreen_render,\n        'policy_config': policy_config,\n        'task_name': task_name,\n        'seed': args['seed'],\n        'temporal_agg': args['temporal_agg'],",
+        "type": "code",
+        "location": "/train_latent_model.py:66-92"
+    },
+    "569": {
+        "file_id": 32,
+        "content": "This code is defining the configuration for training a latent model. It has different policy classes, such as 'Transformer', 'CNNMLP', and others not yet implemented. The configuration includes parameters like learning rate, backbone architecture, camera names, episode length, etc. If an unsupported policy class is given, it raises a NotImplementedError.",
+        "type": "comment"
+    },
+    "570": {
+        "file_id": 32,
+        "content": "        'camera_names': camera_names,\n        'real_robot': not is_sim\n    }\n    # if is_eval:\n    #     ckpt_names = [f'policy_best.ckpt']\n    #     results = []\n    #     for ckpt_name in ckpt_names:\n    #         success_rate, avg_return = eval_bc(config, ckpt_name, save_episode=True)\n    #         results.append([ckpt_name, success_rate, avg_return])\n    #     for ckpt_name, success_rate, avg_return in results:\n    #         print(f'{ckpt_name}: {success_rate=} {avg_return=}')\n    #     print()\n    #     exit()\n    train_dataloader, val_dataloader, stats, _ = load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val)\n    # save dataset stats\n    # if not os.path.isdir(ckpt_dir):\n    #     os.makedirs(ckpt_dir)\n    # stats_path = os.path.join(ckpt_dir, f'dataset_stats.pkl')\n    # with open(stats_path, 'wb') as f:\n    #     pickle.dump(stats, f)\n    ckpt_name = f'policy_last.ckpt'\n    best_ckpt_info = train_bc(train_dataloader, val_dataloader, config, ckpt_name)\n    best_epoch, min_val_loss, best_state_dict = best_ckpt_info",
+        "type": "code",
+        "location": "/train_latent_model.py:93-120"
+    },
+    "571": {
+        "file_id": 32,
+        "content": "This code snippet is loading data and training a behavioral cloning (BC) model. If `is_eval` is true, it evaluates the best checkpoint. It loads the data, saves the dataset stats if necessary, trains the BC model, and stores information about the best checkpoint.",
+        "type": "comment"
+    },
+    "572": {
+        "file_id": 32,
+        "content": "    # save best checkpoint\n    ckpt_path = os.path.join(ckpt_dir, f'latent_model_best.ckpt')\n    torch.save(best_state_dict, ckpt_path)\n    print(f'Best ckpt, val loss {min_val_loss:.6f} @ epoch{best_epoch}')\ndef make_policy(policy_class, policy_config):\n    if policy_class == 'ACT':\n        policy = ACTPolicy(policy_config)\n    elif policy_class == 'CNNMLP':\n        policy = CNNMLPPolicy(policy_config)\n    else:\n        raise NotImplementedError\n    return policy\n# def make_optimizer(policy_class, policy):\n#     if policy_class == 'ACT':\n#         optimizer = policy.configure_optimizers()\n#     elif policy_class == 'CNNMLP':\n#         optimizer = policy.configure_optimizers()\n#     else:\n#         raise NotImplementedError\n#     return optimizer\ndef get_image(ts, camera_names):\n    curr_images = []\n    for cam_name in camera_names:\n        curr_image = rearrange(ts.observation['images'][cam_name], 'h w c -> c h w')\n        curr_images.append(curr_image)\n    curr_image = np.stack(curr_images, axis=0)\n    curr_image = torch.from_numpy(curr_image / 255.0).float().cuda().unsqueeze(0)",
+        "type": "code",
+        "location": "/train_latent_model.py:122-154"
+    },
+    "573": {
+        "file_id": 32,
+        "content": "Code snippet saves the best checkpoint for a latent model, defines a policy function based on the given class, and gets an image from the observations.",
+        "type": "comment"
+    },
+    "574": {
+        "file_id": 32,
+        "content": "    return curr_image\n# def eval_bc(config, ckpt_name, save_episode=True):\n#     set_seed(1000)\n#     ckpt_dir = config['ckpt_dir']\n#     state_dim = config['state_dim']\n#     real_robot = config['real_robot']\n#     policy_class = config['policy_class']\n#     onscreen_render = config['onscreen_render']\n#     policy_config = config['policy_config']\n#     camera_names = config['camera_names']\n#     max_timesteps = config['episode_len']\n#     task_name = config['task_name']\n#     temporal_agg = config['temporal_agg']\n#     onscreen_cam = 'angle'\n#     # load policy and stats\n#     ckpt_path = os.path.join(ckpt_dir, ckpt_name)\n#     policy = make_policy(policy_class, policy_config)\n#     loading_status = policy.load_state_dict(torch.load(ckpt_path))\n#     print(loading_status)\n#     policy.cuda()\n#     policy.eval()\n#     print(f'Loaded: {ckpt_path}')\n#     stats_path = os.path.join(ckpt_dir, f'dataset_stats.pkl')\n#     with open(stats_path, 'rb') as f:\n#         stats = pickle.load(f)\n#     pre_process = lambda s_qpos: (s_qpos - stats['qpos_mean']) / stats['qpos_std']",
+        "type": "code",
+        "location": "/train_latent_model.py:155-184"
+    },
+    "575": {
+        "file_id": 32,
+        "content": "This code defines a function to evaluate the performance of a trained policy. It loads the policy from a checkpoint file, prepares the necessary configurations, and then evaluates the policy by running episodes. The function takes in the configuration, checkpoint name, and an optional parameter for saving episode results. It uses torch and pickle libraries for loading and processing data.",
+        "type": "comment"
+    },
+    "576": {
+        "file_id": 32,
+        "content": "#     post_process = lambda a: a * stats['action_std'] + stats['action_mean']\n#     # load environment\n#     if real_robot:\n#         from aloha_scripts.robot_utils import move_grippers # requires aloha\n#         from aloha_scripts.real_env import make_real_env # requires aloha\n#         env = make_real_env(init_node=True)\n#         env_max_reward = 0\n#     else:\n#         from sim_env import make_sim_env\n#         env = make_sim_env(task_name)\n#         env_max_reward = env.task.max_reward\n#     query_frequency = policy_config['num_queries']\n#     if temporal_agg:\n#         query_frequency = 1\n#         num_queries = policy_config['num_queries']\n#     max_timesteps = int(max_timesteps * 1) # may increase for real-world tasks\n#     num_rollouts = 50\n#     episode_returns = []\n#     highest_rewards = []\n#     for rollout_id in range(num_rollouts):\n#         rollout_id += 0\n#         ### set task\n#         if 'sim_transfer_cube' in task_name:\n#             BOX_POSE[0] = sample_box_pose() # used in sim reset\n#         elif 'sim_insertion' in task_name:",
+        "type": "code",
+        "location": "/train_latent_model.py:185-213"
+    },
+    "577": {
+        "file_id": 32,
+        "content": "This code is initializing an environment, either real or simulated, based on the \"real_robot\" flag. It then sets up variables for rollout number of episodes, maximum timesteps, query frequency (which may change depending on temporal aggregation), and stores episode returns and highest rewards in lists. The last few lines seem to set up task-specific poses for certain tasks.",
+        "type": "comment"
+    },
+    "578": {
+        "file_id": 32,
+        "content": "#             BOX_POSE[0] = np.concatenate(sample_insertion_pose()) # used in sim reset\n#         ts = env.reset()\n#         ### onscreen render\n#         if onscreen_render:\n#             ax = plt.subplot()\n#             plt_img = ax.imshow(env._physics.render(height=480, width=640, camera_id=onscreen_cam))\n#             plt.ion()\n#         ### evaluation loop\n#         if temporal_agg:\n#             all_time_actions = torch.zeros([max_timesteps, max_timesteps+num_queries, state_dim]).cuda()\n#         qpos_history = torch.zeros((1, max_timesteps, state_dim)).cuda()\n#         image_list = [] # for visualization\n#         qpos_list = []\n#         target_qpos_list = []\n#         rewards = []\n#         with torch.inference_mode():\n#             for t in range(max_timesteps):\n#                 ### update onscreen render and wait for DT\n#                 if onscreen_render:\n#                     image = env._physics.render(height=480, width=640, camera_id=onscreen_cam)\n#                     plt_img.set_data(image)",
+        "type": "code",
+        "location": "/train_latent_model.py:214-238"
+    },
+    "579": {
+        "file_id": 32,
+        "content": "This code snippet is part of a training process for a latent model. It resets the environment, performs on-screen rendering if needed, and then enters an evaluation loop to collect data for training. The code uses PyTorch for inference mode and handles on-screen rendering, image capturing, and storing data for further analysis or model training.",
+        "type": "comment"
+    },
+    "580": {
+        "file_id": 32,
+        "content": "#                     plt.pause(DT)\n#                 ### process previous timestep to get qpos and image_list\n#                 obs = ts.observation\n#                 if 'images' in obs:\n#                     image_list.append(obs['images'])\n#                 else:\n#                     image_list.append({'main': obs['image']})\n#                 qpos_numpy = np.array(obs['qpos'])\n#                 qpos = pre_process(qpos_numpy)\n#                 qpos = torch.from_numpy(qpos).float().cuda().unsqueeze(0)\n#                 qpos_history[:, t] = qpos\n#                 curr_image = get_image(ts, camera_names)\n#                 ### query policy\n#                 if config['policy_class'] == \"ACT\":\n#                     if t % query_frequency == 0:\n#                         all_actions = policy(qpos, curr_image)\n#                     if temporal_agg:\n#                         all_time_actions[[t], t:t+num_queries] = all_actions\n#                         actions_for_curr_step = all_time_actions[:, t]\n#                         actions_populated = torch.all(actions_for_curr_step != 0, axis=1)",
+        "type": "code",
+        "location": "/train_latent_model.py:239-260"
+    },
+    "581": {
+        "file_id": 32,
+        "content": "This code segment is part of a deep reinforcement learning algorithm that interacts with an environment. It processes observations, pre-processes state variables (qpos), and queries the policy to generate actions. The 'policy_class' determines whether to use an ACT policy or not. If so, it queries the policy for actions at specific intervals (query_frequency) and possibly aggregates them over time if temporal_agg is set to True. This algorithm likely trains a latent model in an environment with potential visual input from cameras.",
+        "type": "comment"
+    },
+    "582": {
+        "file_id": 32,
+        "content": "#                         actions_for_curr_step = actions_for_curr_step[actions_populated]\n#                         k = 0.01\n#                         exp_weights = np.exp(-k * np.arange(len(actions_for_curr_step)))\n#                         exp_weights = exp_weights / exp_weights.sum()\n#                         exp_weights = torch.from_numpy(exp_weights).cuda().unsqueeze(dim=1)\n#                         raw_action = (actions_for_curr_step * exp_weights).sum(dim=0, keepdim=True)\n#                     else:\n#                         raw_action = all_actions[:, t % query_frequency]\n#                 elif config['policy_class'] == \"CNNMLP\":\n#                     raw_action = policy(qpos, curr_image)\n#                 else:\n#                     raise NotImplementedError\n#                 ### post-process actions\n#                 raw_action = raw_action.squeeze(0).cpu().numpy()\n#                 action = post_process(raw_action)\n#                 target_qpos = action\n#                 ### step the environment",
+        "type": "code",
+        "location": "/train_latent_model.py:261-279"
+    },
+    "583": {
+        "file_id": 32,
+        "content": "This code determines the raw action for a given step in an environment. It first checks the policy class and then applies the appropriate method to get the raw action. If the policy class is \"Exponential\", it calculates weights based on actions, sums them, and uses them to compute the raw action. If the policy class is \"CNNMLP\", it calls a predefined function \"policy\" with the current state and image as inputs. If none of these conditions are met, it raises an error. The resulting raw_action is then post-processed and used to determine target_qpos for the next step in the environment.",
+        "type": "comment"
+    },
+    "584": {
+        "file_id": 32,
+        "content": "#                 ts = env.step(target_qpos)\n#                 ### for visualization\n#                 qpos_list.append(qpos_numpy)\n#                 target_qpos_list.append(target_qpos)\n#                 rewards.append(ts.reward)\n#             plt.close()\n#         if real_robot:\n#             move_grippers([env.puppet_bot_left, env.puppet_bot_right], [PUPPET_GRIPPER_JOINT_OPEN] * 2, move_time=0.5)  # open\n#             pass\n#         rewards = np.array(rewards)\n#         episode_return = np.sum(rewards[rewards!=None])\n#         episode_returns.append(episode_return)\n#         episode_highest_reward = np.max(rewards)\n#         highest_rewards.append(episode_highest_reward)\n#         print(f'Rollout {rollout_id}\\n{episode_return=}, {episode_highest_reward=}, {env_max_reward=}, Success: {episode_highest_reward==env_max_reward}')\n#         if save_episode:\n#             save_videos(image_list, DT, video_path=os.path.join(ckpt_dir, f'video{rollout_id}.mp4'))\n#     success_rate = np.mean(np.array(highest_rewards) == env_max_reward)",
+        "type": "code",
+        "location": "/train_latent_model.py:280-302"
+    },
+    "585": {
+        "file_id": 32,
+        "content": "This code segment is tracking the reward, episode return, and highest reward during a rollout in a robotics environment. It also handles visualization by appending qpos and target_qpos to lists, and has options to save videos of the episodes. It prints the rollout results and calculates the success rate based on the highest rewards achieved.",
+        "type": "comment"
+    },
+    "586": {
+        "file_id": 32,
+        "content": "#     avg_return = np.mean(episode_returns)\n#     summary_str = f'\\nSuccess rate: {success_rate}\\nAverage return: {avg_return}\\n\\n'\n#     for r in range(env_max_reward+1):\n#         more_or_equal_r = (np.array(highest_rewards) >= r).sum()\n#         more_or_equal_r_rate = more_or_equal_r / num_rollouts\n#         summary_str += f'Reward >= {r}: {more_or_equal_r}/{num_rollouts} = {more_or_equal_r_rate*100}%\\n'\n#     print(summary_str)\n#     # save success rate to txt\n#     result_file_name = 'result_' + ckpt_name.split('.')[0] + '.txt'\n#     with open(os.path.join(ckpt_dir, result_file_name), 'w') as f:\n#         f.write(summary_str)\n#         f.write(repr(episode_returns))\n#         f.write('\\n\\n')\n#         f.write(repr(highest_rewards))\n#     return success_rate, avg_return\ndef forward_pass(data, policy, latent_model):\n    image_data, qpos_data, action_data, is_pad = data\n    image_data, qpos_data, action_data, is_pad = image_data.cuda(), qpos_data.cuda(), action_data.cuda(), is_pad.cuda()\n    forward_dict = {}",
+        "type": "code",
+        "location": "/train_latent_model.py:303-326"
+    },
+    "587": {
+        "file_id": 32,
+        "content": "The code calculates the success rate and average return for a set of rollouts in an environment. It then creates a summary string with reward thresholds, success rate, and average return, and writes it to a text file along with episode returns and highest rewards. The function is part of a larger codebase for training a latent model using policy and latent_model parameters.",
+        "type": "comment"
+    },
+    "588": {
+        "file_id": 32,
+        "content": "    gt_labels = policy.vq_encode(qpos_data, action_data, is_pad)\n    inputs = torch.cat([torch.zeros_like(gt_labels)[:, [0]], gt_labels[:, :-1]], dim=1)\n    output_logits = latent_model(inputs)\n    ce_loss = F.cross_entropy(output_logits, gt_labels)\n    with torch.no_grad():\n        output_labels = F.one_hot(torch.argmax(output_logits, dim=-1), num_classes=gt_labels.shape[-1]).float()\n        # output_latents = F.softmax(output_logits, dim=-1)\n        l1_error = F.l1_loss(output_labels, gt_labels, reduction='mean')\n        # l1_errors = []\n        # for i in range(l1_errors.shape[1]):\n        #     l1_errors.append(torch.mean(l1_errors[:, i]).item())\n    forward_dict['loss'] = ce_loss\n    forward_dict['l1_error'] = l1_error\n    return forward_dict\ndef train_bc(train_dataloader, val_dataloader, config, ckpt_name):\n    num_epochs = config['num_epochs']\n    ckpt_dir = config['ckpt_dir']\n    seed = config['seed']\n    policy_class = config['policy_class']\n    policy_config = config['policy_config']\n    set_seed(seed)",
+        "type": "code",
+        "location": "/train_latent_model.py:327-353"
+    },
+    "589": {
+        "file_id": 32,
+        "content": "This code uses VQ-VAE to encode data, then feeds it into a latent model and calculates cross entropy loss. It also measures L1 error between output labels and ground truth labels for evaluation. The train_bc function trains the policy using a specified number of epochs with a given configuration and checkpoint directory.",
+        "type": "comment"
+    },
+    "590": {
+        "file_id": 32,
+        "content": "    vq_dim = config['policy_config']['vq_dim']\n    vq_class = config['policy_config']['vq_class']\n    latent_model = Latent_Model_Transformer(vq_dim, vq_dim, vq_class)\n    latent_model.cuda()\n    ckpt_path = os.path.join(ckpt_dir, ckpt_name)\n    policy = make_policy(policy_class, policy_config)\n    loading_status = policy.load_state_dict(torch.load(ckpt_path))\n    policy.eval()\n    policy.cuda()\n    optimizer = torch.optim.AdamW(latent_model.parameters(), lr=config['lr'])\n    train_history = []\n    validation_history = []\n    min_val_loss = np.inf\n    best_ckpt_info = None\n    for epoch in tqdm(range(num_epochs)):\n        print(f'\\nEpoch {epoch}')\n        # validation\n        with torch.inference_mode():\n            latent_model.eval()\n            epoch_dicts = []\n            for batch_idx, data in enumerate(val_dataloader):\n                forward_dict = forward_pass(data, policy, latent_model)\n                epoch_dicts.append(forward_dict)\n            epoch_summary = compute_dict_mean(epoch_dicts)\n            validation_history.append(epoch_summary)",
+        "type": "code",
+        "location": "/train_latent_model.py:355-382"
+    },
+    "591": {
+        "file_id": 32,
+        "content": "This code initializes a latent model and policy, loads checkpoints for the policy, optimizes the latent model using AdamW, trains for specified number of epochs, and validates the performance at each epoch.",
+        "type": "comment"
+    },
+    "592": {
+        "file_id": 32,
+        "content": "            epoch_val_loss = epoch_summary['loss']\n            if epoch_val_loss < min_val_loss:\n                min_val_loss = epoch_val_loss\n                best_ckpt_info = (epoch, min_val_loss, deepcopy(latent_model.state_dict()))\n        print(f'Val loss:   {epoch_val_loss:.5f}')\n        summary_string = ''\n        for k, v in epoch_summary.items():\n            summary_string += f'{k}: {v.item():.3f} '\n        print(summary_string)\n        # training\n        optimizer.zero_grad()\n        for batch_idx, data in enumerate(train_dataloader):\n            forward_dict = forward_pass(data, policy, latent_model)\n            # backward\n            loss = forward_dict['loss']\n            loss.backward()\n            optimizer.step()\n            optimizer.zero_grad()\n            train_history.append(detach_dict(forward_dict))\n        epoch_summary = compute_dict_mean(train_history[(batch_idx+1)*epoch:(batch_idx+1)*(epoch+1)])\n        epoch_train_loss = epoch_summary['loss']\n        print(f'Train loss: {epoch_train_loss:.5f}')",
+        "type": "code",
+        "location": "/train_latent_model.py:384-406"
+    },
+    "593": {
+        "file_id": 32,
+        "content": "This code is saving the best checkpoint, printing validation and training losses, iterating through dataloader for backpropagation, computing mean of dictionary values to get epoch summary, and storing it in a list.",
+        "type": "comment"
+    },
+    "594": {
+        "file_id": 32,
+        "content": "        summary_string = ''\n        for k, v in epoch_summary.items():\n            summary_string += f'{k}: {v.item():.3f} '\n        print(summary_string)\n        if epoch % 100 == 0:\n            ckpt_path = os.path.join(ckpt_dir, f'latent_model_epoch_{epoch}_seed_{seed}.ckpt')\n            torch.save(latent_model.state_dict(), ckpt_path)\n            plot_history(train_history, validation_history, epoch, ckpt_dir, seed)\n    ckpt_path = os.path.join(ckpt_dir, f'latent_model_last.ckpt')\n    torch.save(latent_model.state_dict(), ckpt_path)\n    best_epoch, min_val_loss, best_state_dict = best_ckpt_info\n    ckpt_path = os.path.join(ckpt_dir, f'latent_model_epoch_{best_epoch}_seed_{seed}.ckpt')\n    torch.save(best_state_dict, ckpt_path)\n    print(f'Training finished:\\nSeed {seed}, val loss {min_val_loss:.6f} at epoch {best_epoch}')\n    # save training curves\n    plot_history(train_history, validation_history, num_epochs, ckpt_dir, seed)\n    return best_ckpt_info\ndef plot_history(train_history, validation_history, num_epochs, ckpt_dir, seed):",
+        "type": "code",
+        "location": "/train_latent_model.py:407-431"
+    },
+    "595": {
+        "file_id": 32,
+        "content": "The code snippet saves the latent model's state at each epoch, keeps track of the best checkpoint, and plots the training curves. It prints the final validation loss and epoch where it occurred.",
+        "type": "comment"
+    },
+    "596": {
+        "file_id": 32,
+        "content": "    # save training curves\n    for key in train_history[0]:\n        plot_path = os.path.join(ckpt_dir, f'latent_model_val_{key}_seed_{seed}.png')\n        plt.figure()\n        train_values = [summary[key].item() for summary in train_history]\n        val_values = [summary[key].item() for summary in validation_history]\n        plt.plot(np.linspace(0, num_epochs-1, len(train_history)), train_values, label='train')\n        plt.plot(np.linspace(0, num_epochs-1, len(validation_history)), val_values, label='validation')\n        # plt.ylim([-0.1, 1])\n        plt.tight_layout()\n        plt.legend()\n        plt.title(key)\n        plt.savefig(plot_path)\n    print(f'Saved plots to {ckpt_dir}')\nif __name__ == '__main__':\n    parser = argparse.ArgumentParser()\n    parser.add_argument('--eval', action='store_true')\n    parser.add_argument('--onscreen_render', action='store_true')\n    parser.add_argument('--ckpt_dir', action='store', type=str, help='ckpt_dir', required=True)\n    parser.add_argument('--policy_class', action='store', type=str, help='policy_class, capitalize', required=True)",
+        "type": "code",
+        "location": "/train_latent_model.py:432-453"
+    },
+    "597": {
+        "file_id": 32,
+        "content": "This code saves training curves for a latent model and plots them. It iterates over keys in train_history, generates plots for each key (train and validation), and saves the plot to ckpt_dir with seed appended. The code also takes command-line arguments such as --eval, --onscreen_render, --ckpt_dir, and --policy_class.",
+        "type": "comment"
+    },
+    "598": {
+        "file_id": 32,
+        "content": "    parser.add_argument('--task_name', action='store', type=str, help='task_name', required=True)\n    parser.add_argument('--batch_size', action='store', type=int, help='batch_size', required=True)\n    parser.add_argument('--seed', action='store', type=int, help='seed', required=True)\n    parser.add_argument('--num_epochs', action='store', type=int, help='num_epochs', required=True)\n    parser.add_argument('--lr', action='store', type=float, help='lr', required=True)\n    # for ACT\n    parser.add_argument('--kl_weight', action='store', type=int, help='KL Weight', required=False)\n    parser.add_argument('--chunk_size', action='store', type=int, help='chunk_size', required=False)\n    parser.add_argument('--hidden_dim', action='store', type=int, help='hidden_dim', required=False)\n    parser.add_argument('--dim_feedforward', action='store', type=int, help='dim_feedforward', required=False)\n    parser.add_argument('--temporal_agg', action='store_true')\n    parser.add_argument('--use_vq', action='store_true')",
+        "type": "code",
+        "location": "/train_latent_model.py:454-466"
+    },
+    "599": {
+        "file_id": 32,
+        "content": "This code defines command-line arguments for the program, specifying required and optional parameters such as task_name, batch_size, seed, num_epochs, lr, kl_weight, chunk_size, hidden_dim, dim_feedforward, and temporal_agg. These options allow the user to customize the training process of the latent model.",
+        "type": "comment"
+    }
+}

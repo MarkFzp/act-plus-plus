@@ -1,0 +1,10 @@
+{
+    "summary": "This code snippet is modified from the DETR repository and licensed under Apache 2.0. It cites End-to-End Object Detection with Transformers paper as its reference.",
+    "details": [
+        {
+            "comment": "This code snippet is modified from the DETR repository and licensed under Apache 2.0. It cites End-to-End Object Detection with Transformers paper as its reference.",
+            "location": "\"/media/root/Prima/works/act-plus-plus/docs/src/detr/README.md\":0-8",
+            "content": "This part of the codebase is modified from DETR https://github.com/facebookresearch/detr under APACHE 2.0.\n    @article{Carion2020EndtoEndOD,\n      title={End-to-End Object Detection with Transformers},\n      author={Nicolas Carion and Francisco Massa and Gabriel Synnaeve and Nicolas Usunier and Alexander Kirillov and Sergey Zagoruyko},\n      journal={ArXiv},\n      year={2020},\n      volume={abs/2005.12872}\n    }"
+        }
+    ]
+}

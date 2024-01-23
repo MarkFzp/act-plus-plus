@@ -1,0 +1,10 @@
+{
+    "summary": "This YAML file defines a Conda environment named \"aloha\" with specified channels, Python version, and required packages for the codebase.",
+    "details": [
+        {
+            "comment": "This YAML file defines a Conda environment named \"aloha\" with specified channels, Python version, and required packages for the codebase.",
+            "location": "\"/media/root/Prima/works/act-plus-plus/docs/src/conda_env.yaml\":0-22",
+            "content": "name: aloha\nchannels:\n  - pytorch\n  - nvidia\n  - conda-forge\ndependencies:\n  - python=3.9\n  - pip=23.0.1\n  - pytorch=2.0.0\n  - torchvision=0.15.0\n  - pytorch-cuda=11.8\n  - pyquaternion=0.9.9\n  - pyyaml=6.0\n  - rospkg=1.5.0\n  - pexpect=4.8.0\n  - mujoco=2.3.3\n  - dm_control=1.0.9\n  - py-opencv=4.7.0\n  - matplotlib=3.7.1\n  - einops=0.6.0\n  - packaging=23.0\n  - h5py=3.8.0\n  - ipython=8.12.0"
+        }
+    ]
+}

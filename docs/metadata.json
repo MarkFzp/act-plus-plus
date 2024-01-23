@@ -1,0 +1,205 @@
+{
+    "url": {
+        "full": "https://github.com/MarkFzp/act-plus-plus",
+        "partial": "MarkFzp/act-plus-plus"
+    },
+    "file_mapping": {
+        "0": {
+            "filepath": "/README.md",
+            "entry_id": 0,
+            "language_id": "markdown"
+        },
+        "1": {
+            "filepath": "/__init__.py",
+            "entry_id": 10,
+            "language_id": "python"
+        },
+        "2": {
+            "filepath": "/align.py",
+            "entry_id": 14,
+            "language_id": "python"
+        },
+        "3": {
+            "filepath": "/commands.txt",
+            "entry_id": 20,
+            "language_id": "plain-text"
+        },
+        "4": {
+            "filepath": "/compress_data.py",
+            "entry_id": 66,
+            "language_id": "python"
+        },
+        "5": {
+            "filepath": "/conda_env.yaml",
+            "entry_id": 82,
+            "language_id": "yaml"
+        },
+        "6": {
+            "filepath": "/constants.py",
+            "entry_id": 86,
+            "language_id": "python"
+        },
+        "7": {
+            "filepath": "/detr/README.md",
+            "entry_id": 98,
+            "language_id": "plain-text"
+        },
+        "8": {
+            "filepath": "/detr/main.py",
+            "entry_id": 102,
+            "language_id": "python"
+        },
+        "9": {
+            "filepath": "/detr/models/__init__.py",
+            "entry_id": 118,
+            "language_id": "python"
+        },
+        "10": {
+            "filepath": "/detr/models/backbone.py",
+            "entry_id": 122,
+            "language_id": "python"
+        },
+        "11": {
+            "filepath": "/detr/models/detr_vae.py",
+            "entry_id": 134,
+            "language_id": "python"
+        },
+        "12": {
+            "filepath": "/detr/models/latent_model.py",
+            "entry_id": 164,
+            "language_id": "python"
+        },
+        "13": {
+            "filepath": "/detr/models/position_encoding.py",
+            "entry_id": 172,
+            "language_id": "python"
+        },
+        "14": {
+            "filepath": "/detr/models/transformer.py",
+            "entry_id": 182,
+            "language_id": "python"
+        },
+        "15": {
+            "filepath": "/detr/setup.py",
+            "entry_id": 210,
+            "language_id": "python"
+        },
+        "16": {
+            "filepath": "/detr/util/__init__.py",
+            "entry_id": 214,
+            "language_id": "python"
+        },
+        "17": {
+            "filepath": "/detr/util/box_ops.py",
+            "entry_id": 218,
+            "language_id": "python"
+        },
+        "18": {
+            "filepath": "/detr/util/misc.py",
+            "entry_id": 226,
+            "language_id": "python"
+        },
+        "19": {
+            "filepath": "/detr/util/plot_utils.py",
+            "entry_id": 258,
+            "language_id": "python"
+        },
+        "20": {
+            "filepath": "/dxl_test.py",
+            "entry_id": 270,
+            "language_id": "python"
+        },
+        "21": {
+            "filepath": "/dynamixel_client.py",
+            "entry_id": 274,
+            "language_id": "python"
+        },
+        "22": {
+            "filepath": "/ee_sim_env.py",
+            "entry_id": 320,
+            "language_id": "python"
+        },
+        "23": {
+            "filepath": "/imitate_episodes.py",
+            "entry_id": 348,
+            "language_id": "python"
+        },
+        "24": {
+            "filepath": "/policy.py",
+            "entry_id": 408,
+            "language_id": "python"
+        },
+        "25": {
+            "filepath": "/postprocess_episodes.py",
+            "entry_id": 432,
+            "language_id": "python"
+        },
+        "26": {
+            "filepath": "/record_sim_episodes.py",
+            "entry_id": 450,
+            "language_id": "python"
+        },
+        "27": {
+            "filepath": "/replay_episodes.py",
+            "entry_id": 468,
+            "language_id": "python"
+        },
+        "28": {
+            "filepath": "/scripted_policy.py",
+            "entry_id": 474,
+            "language_id": "python"
+        },
+        "29": {
+            "filepath": "/setup.py",
+            "entry_id": 496,
+            "language_id": "python"
+        },
+        "30": {
+            "filepath": "/sim_env.py",
+            "entry_id": 500,
+            "language_id": "python"
+        },
+        "31": {
+            "filepath": "/train_actuator_network.py",
+            "entry_id": 528,
+            "language_id": "python"
+        },
+        "32": {
+            "filepath": "/train_latent_model.py",
+            "entry_id": 562,
+            "language_id": "python"
+        },
+        "33": {
+            "filepath": "/truncate_data.py",
+            "entry_id": 602,
+            "language_id": "python"
+        },
+        "34": {
+            "filepath": "/utils.py",
+            "entry_id": 616,
+            "language_id": "python"
+        },
+        "35": {
+            "filepath": "/vinn_cache_feature.py",
+            "entry_id": 648,
+            "language_id": "python"
+        },
+        "36": {
+            "filepath": "/vinn_eval.py",
+            "entry_id": 662,
+            "language_id": "python"
+        },
+        "37": {
+            "filepath": "/vinn_select_k.py",
+            "entry_id": 690,
+            "language_id": "python"
+        },
+        "38": {
+            "filepath": "/visualize_episodes.py",
+            "entry_id": 702,
+            "language_id": "python"
+        }
+    },
+    "project_name": "act-plus-plus",
+    "split_count": 8
+}

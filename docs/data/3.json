@@ -1,0 +1,550 @@
+{
+    "300": {
+        "file_id": 21,
+        "content": "            max_value = (1 << (8 * size)) - 1\n            value = max_value + value\n        return value\n    def __enter__(self):\n        \"\"\"Enables use as a context manager.\"\"\"\n        if not self.is_connected:\n            self.connect()\n        return self\n    def __exit__(self, *args):\n        \"\"\"Enables use as a context manager.\"\"\"\n        self.disconnect()\n    def __del__(self):\n        \"\"\"Automatically disconnect on destruction.\"\"\"\n        self.disconnect()\nclass DynamixelReader:\n    \"\"\"Reads data from Dynamixel motors.\n    This wraps a GroupBulkRead from the DynamixelSDK.\n    \"\"\"\n    def __init__(self, client: DynamixelClient, motor_ids: Sequence[int],\n                 address: int, size: int):\n        \"\"\"Initializes a new reader.\"\"\"\n        self.client = client\n        self.motor_ids = motor_ids\n        self.address = address\n        self.size = size\n        self._initialize_data()\n        self.operation = self.client.dxl.GroupBulkRead(client.port_handler,\n                                                       client.packet_handler)",
+        "type": "code",
+        "location": "/dynamixel_client.py:330-365"
+    },
+    "301": {
+        "file_id": 21,
+        "content": "This code defines a DynamixelReader class for reading data from Dynamixel motors using GroupBulkRead from the DynamixelSDK. It also provides context management functionality with __enter__ and __exit__ methods, and automatically disconnects on destruction with __del__.",
+        "type": "comment"
+    },
+    "302": {
+        "file_id": 21,
+        "content": "        for motor_id in motor_ids:\n            success = self.operation.addParam(motor_id, address, size)\n            if not success:\n                raise OSError(\n                    '[Motor ID: {}] Could not add parameter to bulk read.'\n                    .format(motor_id))\n    def read(self, retries: int = 1):\n        \"\"\"Reads data from the motors.\"\"\"\n        self.client.check_connected()\n        success = False\n        while not success and retries >= 0:\n            comm_result = self.operation.txRxPacket()\n            success = self.client.handle_packet_result(\n                comm_result, context='read')\n            retries -= 1\n        # If we failed, send a copy of the previous data.\n        if not success:\n            return self._get_data()\n        errored_ids = []\n        for i, motor_id in enumerate(self.motor_ids):\n            # Check if the data is available.\n            available = self.operation.isAvailable(motor_id, self.address,\n                                                   self.size)",
+        "type": "code",
+        "location": "/dynamixel_client.py:367-392"
+    },
+    "303": {
+        "file_id": 21,
+        "content": "This code adds parameters to a bulk read operation for each motor ID, reads data from motors with retries in case of errors or disconnections, and returns previous data if the read fails.",
+        "type": "comment"
+    },
+    "304": {
+        "file_id": 21,
+        "content": "            if not available:\n                errored_ids.append(motor_id)\n                continue\n            self._update_data(i, motor_id)\n        if errored_ids:\n            logging.error('Bulk read data is unavailable for: %s',\n                          str(errored_ids))\n        return self._get_data()\n    def _initialize_data(self):\n        \"\"\"Initializes the cached data.\"\"\"\n        self._data = np.zeros(len(self.motor_ids), dtype=np.float32)\n    def _update_data(self, index: int, motor_id: int):\n        \"\"\"Updates the data index for the given motor ID.\"\"\"\n        self._data[index] = self.operation.getData(motor_id, self.address,\n                                                   self.size)\n    def _get_data(self):\n        \"\"\"Returns a copy of the data.\"\"\"\n        return self._data.copy()\nclass DynamixelPosVelCurReader(DynamixelReader):\n    \"\"\"Reads positions and velocities.\"\"\"\n    def __init__(self,\n                 client: DynamixelClient,\n                 motor_ids: Sequence[int],\n                 pos_scale: float = 1.0,",
+        "type": "code",
+        "location": "/dynamixel_client.py:393-425"
+    },
+    "305": {
+        "file_id": 21,
+        "content": "This code is part of a Dynamixel client that communicates with a robot's servo motors to read position and velocity data. It initializes the cached data, updates the data for specific motor IDs, returns a copy of the data, and handles cases where data is unavailable.",
+        "type": "comment"
+    },
+    "306": {
+        "file_id": 21,
+        "content": "                 vel_scale: float = 1.0,\n                 cur_scale: float = 1.0):\n        super().__init__(\n            client,\n            motor_ids,\n            address=ADDR_PRESENT_POS_VEL_CUR,\n            size=LEN_PRESENT_POS_VEL_CUR,\n        )\n        self.pos_scale = pos_scale\n        self.vel_scale = vel_scale\n        self.cur_scale = cur_scale\n    def _initialize_data(self):\n        \"\"\"Initializes the cached data.\"\"\"\n        self._pos_data = np.zeros(len(self.motor_ids), dtype=np.float32)\n        self._vel_data = np.zeros(len(self.motor_ids), dtype=np.float32)\n        self._cur_data = np.zeros(len(self.motor_ids), dtype=np.float32)\n    def _update_data(self, index: int, motor_id: int):\n        \"\"\"Updates the data index for the given motor ID.\"\"\"\n        cur = self.operation.getData(motor_id, ADDR_PRESENT_CURRENT,\n                                     LEN_PRESENT_CURRENT)\n        vel = self.operation.getData(motor_id, ADDR_PRESENT_VELOCITY,\n                                     LEN_PRESENT_VELOCITY)\n        pos = self.operation.getData(motor_id, ADDR_PRESENT_POSITION,",
+        "type": "code",
+        "location": "/dynamixel_client.py:426-450"
+    },
+    "307": {
+        "file_id": 21,
+        "content": "This code defines a class for reading Dynamixel servo data. It takes in a client, motor IDs, and scales for position, velocity, and current. It initializes cached data arrays with zeros for each motor. The _update_data function reads and stores the current, velocity, and position data from the specified address for the given motor ID.",
+        "type": "comment"
+    },
+    "308": {
+        "file_id": 21,
+        "content": "                                     LEN_PRESENT_POSITION)\n        cur = unsigned_to_signed(cur, size=2)\n        vel = unsigned_to_signed(vel, size=4)\n        pos = unsigned_to_signed(pos, size=4)\n        self._pos_data[index] = float(pos) * self.pos_scale\n        self._vel_data[index] = float(vel) * self.vel_scale\n        self._cur_data[index] = float(cur) * self.cur_scale\n    def _get_data(self):\n        \"\"\"Returns a copy of the data.\"\"\"\n        return (self._pos_data.copy(), self._vel_data.copy(),\n                self._cur_data.copy())\nclass DynamixelPosReader(DynamixelReader):\n    \"\"\"Reads positions and velocities.\"\"\"\n    def __init__(self,\n                 client: DynamixelClient,\n                 motor_ids: Sequence[int],\n                 pos_scale: float = 1.0,\n                 vel_scale: float = 1.0,\n                 cur_scale: float = 1.0):\n        super().__init__(\n            client,\n            motor_ids,\n            address=ADDR_PRESENT_POS_VEL_CUR,\n            size=LEN_PRESENT_POS_VEL_CUR,\n        )",
+        "type": "code",
+        "location": "/dynamixel_client.py:451-479"
+    },
+    "309": {
+        "file_id": 21,
+        "content": "The code defines a class `DynamixelPosReader` that inherits from `DynamixelReader` and reads positions and velocities of motors. It takes a client, motor IDs, and scaling factors for position, velocity, and current as parameters. The `__init__` method initializes the superclass with the address and size for reading present position, velocity, and current data. The `_get_data` method returns a copy of the stored position, velocity, and current data.",
+        "type": "comment"
+    },
+    "310": {
+        "file_id": 21,
+        "content": "        self.pos_scale = pos_scale\n    def _initialize_data(self):\n        \"\"\"Initializes the cached data.\"\"\"\n        self._pos_data = np.zeros(len(self.motor_ids), dtype=np.float32)\n    def _update_data(self, index: int, motor_id: int):\n        \"\"\"Updates the data index for the given motor ID.\"\"\"\n        pos = self.operation.getData(motor_id, ADDR_PRESENT_POSITION,\n                                     LEN_PRESENT_POSITION)\n        pos = unsigned_to_signed(pos, size=4)\n        self._pos_data[index] = float(pos) * self.pos_scale\n    def _get_data(self):\n        \"\"\"Returns a copy of the data.\"\"\"\n        return self._pos_data.copy()\nclass DynamixelVelReader(DynamixelReader):\n    \"\"\"Reads positions and velocities.\"\"\"\n    def __init__(self,\n                 client: DynamixelClient,\n                 motor_ids: Sequence[int],\n                 pos_scale: float = 1.0,\n                 vel_scale: float = 1.0,\n                 cur_scale: float = 1.0):\n        super().__init__(\n            client,\n            motor_ids,\n            address=ADDR_PRESENT_POS_VEL_CUR,",
+        "type": "code",
+        "location": "/dynamixel_client.py:480-509"
+    },
+    "311": {
+        "file_id": 21,
+        "content": "The code defines a class `DynamixelReader` that reads position and velocity data from Dynamixel motors. It initializes cached data, updates the data for a given motor ID, and returns a copy of the data. The `DynamixelVelReader` subclass extends this functionality to read positions, velocities, and currents.",
+        "type": "comment"
+    },
+    "312": {
+        "file_id": 21,
+        "content": "            size=LEN_PRESENT_POS_VEL_CUR,\n        )\n        self.pos_scale = pos_scale\n        self.vel_scale = vel_scale\n        self.cur_scale = cur_scale\n    def _initialize_data(self):\n        \"\"\"Initializes the cached data.\"\"\"\n        self._vel_data = np.zeros(len(self.motor_ids), dtype=np.float32)\n    def _update_data(self, index: int, motor_id: int):\n        \"\"\"Updates the data index for the given motor ID.\"\"\"\n        vel = self.operation.getData(motor_id, ADDR_PRESENT_VELOCITY,\n                                     LEN_PRESENT_VELOCITY)\n        vel = unsigned_to_signed(vel, size=4)\n        self._vel_data[index] = float(vel) * self.vel_scale\n    def _get_data(self):\n        \"\"\"Returns a copy of the data.\"\"\"\n        return self._vel_data.copy()\nclass DynamixelCurReader(DynamixelReader):\n    \"\"\"Reads positions and velocities.\"\"\"\n    def __init__(self,\n                 client: DynamixelClient,\n                 motor_ids: Sequence[int],\n                 pos_scale: float = 1.0,\n                 vel_scale: float = 1.0,",
+        "type": "code",
+        "location": "/dynamixel_client.py:510-538"
+    },
+    "313": {
+        "file_id": 21,
+        "content": "This code defines a class DynamixelCurReader that inherits from DynamixelReader and reads positions and velocities from dynamixel motors. The constructor takes in a client, motor IDs, optional position scale, and optional velocity scale. It initializes cached data and sets the position and velocity scales. The _initialize_data method initializes the velocity data with zeros. The _update_data method updates the data index for the given motor ID by getting the velocity from the DynamixelClient, converting it to a signed integer, scaling it by the velocity scale, and storing it in the velocity data. The _get_data method returns a copy of the velocity data.",
+        "type": "comment"
+    },
+    "314": {
+        "file_id": 21,
+        "content": "                 cur_scale: float = 1.0):\n        super().__init__(\n            client,\n            motor_ids,\n            address=ADDR_PRESENT_POS_VEL_CUR,\n            size=LEN_PRESENT_POS_VEL_CUR,\n        )\n        self.cur_scale = cur_scale\n    def _initialize_data(self):\n        \"\"\"Initializes the cached data.\"\"\"\n        self._cur_data = np.zeros(len(self.motor_ids), dtype=np.float32)\n    def _update_data(self, index: int, motor_id: int):\n        \"\"\"Updates the data index for the given motor ID.\"\"\"\n        cur = self.operation.getData(motor_id, ADDR_PRESENT_CURRENT,\n                                     LEN_PRESENT_CURRENT)\n        cur = unsigned_to_signed(cur, size=2)\n        self._cur_data[index] = float(cur) * self.cur_scale\n    def _get_data(self):\n        \"\"\"Returns a copy of the data.\"\"\"\n        return self._cur_data.copy()\n# Register global cleanup function.\natexit.register(dynamixel_cleanup_handler)\nif __name__ == '__main__':\n    import argparse\n    import itertools\n    parser = argparse.ArgumentParser()",
+        "type": "code",
+        "location": "/dynamixel_client.py:539-571"
+    },
+    "315": {
+        "file_id": 21,
+        "content": "The code defines a class for reading the present current values from Dynamixel motors. It initializes data and updates data index for the given motor ID. The function returns a copy of the data. Global cleanup function is registered for atexit module to handle clean-up operations upon program termination.",
+        "type": "comment"
+    },
+    "316": {
+        "file_id": 21,
+        "content": "    parser.add_argument(\n        '-m',\n        '--motors',\n        required=True,\n        help='Comma-separated list of motor IDs.')\n    parser.add_argument(\n        '-d',\n        '--device',\n        default='/dev/ttyUSB0',\n        help='The Dynamixel device to connect to.')\n    parser.add_argument(\n        '-b', '--baud', default=1000000, help='The baudrate to connect with.')\n    parsed_args = parser.parse_args()\n    motors = [int(motor) for motor in parsed_args.motors.split(',')]\n    way_points = [np.zeros(len(motors)), np.full(len(motors), np.pi)]\n    with DynamixelClient(motors, parsed_args.device,\n                         parsed_args.baud) as dxl_client:\n        for step in itertools.count():\n            if step > 0 and step % 50 == 0:\n                way_point = way_points[(step // 100) % len(way_points)]\n                print('Writing: {}'.format(way_point.tolist()))\n                dxl_client.write_desired_pos(motors, way_point)\n            read_start = time.time()\n            pos_now, vel_now, cur_now = dxl_client.read_pos_vel_cur()",
+        "type": "code",
+        "location": "/dynamixel_client.py:572-598"
+    },
+    "317": {
+        "file_id": 21,
+        "content": "The code defines command-line arguments for motor IDs, device, and baudrate. It then parses these arguments into a list of motors, and creates waypoints for motion control using numpy arrays. The DynamixelClient class is instantiated with the parsed arguments, and in an infinite loop, writes waypoint positions to motors and reads current position, velocity, and current values from the device at regular intervals.",
+        "type": "comment"
+    },
+    "318": {
+        "file_id": 21,
+        "content": "            if step % 5 == 0:\n                print('[{}] Frequency: {:.2f} Hz'.format(\n                    step, 1.0 / (time.time() - read_start)))\n                print('> Pos: {}'.format(pos_now.tolist()))\n                print('> Vel: {}'.format(vel_now.tolist()))\n                print('> Cur: {}'.format(cur_now.tolist()))",
+        "type": "code",
+        "location": "/dynamixel_client.py:599-604"
+    },
+    "319": {
+        "file_id": 21,
+        "content": "This code block prints the frequency, positions, velocities, and currents of the dynamixel servos every 5 steps in the loop.",
+        "type": "comment"
+    },
+    "320": {
+        "file_id": 22,
+        "content": "/ee_sim_env.py",
+        "type": "filepath"
+    },
+    "321": {
+        "file_id": 22,
+        "content": "The code creates a function for a bi-manual robot environment, initializes tasks and robots, sets rewards, uses physics simulation, and derives the \"InsertionEETask\" class. It assigns fixed rewards of 4 to contact scenarios in peg insertion tasks.",
+        "type": "summary"
+    },
+    "322": {
+        "file_id": 22,
+        "content": "import numpy as np\nimport collections\nimport os\nfrom constants import DT, XML_DIR, START_ARM_POSE\nfrom constants import PUPPET_GRIPPER_POSITION_CLOSE\nfrom constants import PUPPET_GRIPPER_POSITION_UNNORMALIZE_FN\nfrom constants import PUPPET_GRIPPER_POSITION_NORMALIZE_FN\nfrom constants import PUPPET_GRIPPER_VELOCITY_NORMALIZE_FN\nfrom utils import sample_box_pose, sample_insertion_pose\nfrom dm_control import mujoco\nfrom dm_control.rl import control\nfrom dm_control.suite import base\nimport IPython\ne = IPython.embed\ndef make_ee_sim_env(task_name):\n    \"\"\"\n    Environment for simulated robot bi-manual manipulation, with end-effector control.\n    Action space:      [left_arm_pose (7),             # position and quaternion for end effector\n                        left_gripper_positions (1),    # normalized gripper position (0: close, 1: open)\n                        right_arm_pose (7),            # position and quaternion for end effector\n                        right_gripper_positions (1),]  # normalized gripper position (0: close, 1: open)",
+        "type": "code",
+        "location": "/ee_sim_env.py:1-26"
+    },
+    "323": {
+        "file_id": 22,
+        "content": "The code imports necessary libraries and defines a function `make_ee_sim_env(task_name)` that creates an environment for simulated robot bi-manual manipulation with end-effector control. The action space includes left and right arm pose, along with gripper positions for both arms.",
+        "type": "comment"
+    },
+    "324": {
+        "file_id": 22,
+        "content": "    Observation space: {\"qpos\": Concat[ left_arm_qpos (6),         # absolute joint position\n                                        left_gripper_position (1),  # normalized gripper position (0: close, 1: open)\n                                        right_arm_qpos (6),         # absolute joint position\n                                        right_gripper_qpos (1)]     # normalized gripper position (0: close, 1: open)\n                        \"qvel\": Concat[ left_arm_qvel (6),         # absolute joint velocity (rad)\n                                        left_gripper_velocity (1),  # normalized gripper velocity (pos: opening, neg: closing)\n                                        right_arm_qvel (6),         # absolute joint velocity (rad)\n                                        right_gripper_qvel (1)]     # normalized gripper velocity (pos: opening, neg: closing)\n                        \"images\": {\"main\": (480x640x3)}        # h, w, c, dtype='uint8'\n    \"\"\"\n    if 'sim_transfer_cube' in task_name:",
+        "type": "code",
+        "location": "/ee_sim_env.py:28-38"
+    },
+    "325": {
+        "file_id": 22,
+        "content": "The code defines the observation space for a simulation environment, including absolute joint positions and velocities for both left and right arms, gripper positions and velocities, and image data from a camera. This is likely used in a robotics control algorithm or reinforcement learning task. If \"sim_transfer_cube\" is in the task name, it suggests that the simulation involves transferring an object (possibly a cube) between the left and right arms.",
+        "type": "comment"
+    },
+    "326": {
+        "file_id": 22,
+        "content": "        xml_path = os.path.join(XML_DIR, f'bimanual_viperx_ee_transfer_cube.xml')\n        physics = mujoco.Physics.from_xml_path(xml_path)\n        task = TransferCubeEETask(random=False)\n        env = control.Environment(physics, task, time_limit=20, control_timestep=DT,\n                                  n_sub_steps=None, flat_observation=False)\n    elif 'sim_insertion' in task_name:\n        xml_path = os.path.join(XML_DIR, f'bimanual_viperx_ee_insertion.xml')\n        physics = mujoco.Physics.from_xml_path(xml_path)\n        task = InsertionEETask(random=False)\n        env = control.Environment(physics, task, time_limit=20, control_timestep=DT,\n                                  n_sub_steps=None, flat_observation=False)\n    else:\n        raise NotImplementedError\n    return env\nclass BimanualViperXEETask(base.Task):\n    def __init__(self, random=None):\n        super().__init__(random=random)\n    def before_step(self, action, physics):\n        a_len = len(action) // 2\n        action_left = action[:a_len]\n        action_right = action[a_len:]",
+        "type": "code",
+        "location": "/ee_sim_env.py:39-61"
+    },
+    "327": {
+        "file_id": 22,
+        "content": "This code initializes an environment for a bimanual ViperX EE task, possibly either cube transfer or insertion. It joins the XML file path with the directory and loads the physics from the XML file. Then, it instantiates the specific task (TransferCubeEETask or InsertionEETask) based on the task name. Finally, it creates an environment object using the physics and task, setting the time limit, control timestep, and other options. If no matching task name is found, it raises a NotImplementedError. The BimanualViperXEETask class initializes the base task with an optional random parameter.",
+        "type": "comment"
+    },
+    "328": {
+        "file_id": 22,
+        "content": "        # set mocap position and quat\n        # left\n        np.copyto(physics.data.mocap_pos[0], action_left[:3])\n        np.copyto(physics.data.mocap_quat[0], action_left[3:7])\n        # right\n        np.copyto(physics.data.mocap_pos[1], action_right[:3])\n        np.copyto(physics.data.mocap_quat[1], action_right[3:7])\n        # set gripper\n        g_left_ctrl = PUPPET_GRIPPER_POSITION_UNNORMALIZE_FN(action_left[7])\n        g_right_ctrl = PUPPET_GRIPPER_POSITION_UNNORMALIZE_FN(action_right[7])\n        np.copyto(physics.data.ctrl, np.array([g_left_ctrl, -g_left_ctrl, g_right_ctrl, -g_right_ctrl]))\n    def initialize_robots(self, physics):\n        # reset joint position\n        physics.named.data.qpos[:16] = START_ARM_POSE\n        # reset mocap to align with end effector\n        # to obtain these numbers:\n        # (1) make an ee_sim env and reset to the same start_pose\n        # (2) get env._physics.named.data.xpos['vx300s_left/gripper_link']\n        #     get env._physics.named.data.xquat['vx300s_left/gripper_link']",
+        "type": "code",
+        "location": "/ee_sim_env.py:63-84"
+    },
+    "329": {
+        "file_id": 22,
+        "content": "This code initializes robots in the environment by resetting joint positions and setting mocap (motion capture) position and quaternion for left and right arms. It also sets gripper control values using a provided function, ensuring proper alignment between end effector and mocap data.",
+        "type": "comment"
+    },
+    "330": {
+        "file_id": 22,
+        "content": "        #     repeat the same for right side\n        np.copyto(physics.data.mocap_pos[0], [-0.31718881+0.1, 0.5, 0.29525084])\n        np.copyto(physics.data.mocap_quat[0], [1, 0, 0, 0])\n        # right\n        np.copyto(physics.data.mocap_pos[1], np.array([0.31718881-0.1, 0.49999888, 0.29525084]))\n        np.copyto(physics.data.mocap_quat[1],  [1, 0, 0, 0])\n        # reset gripper control\n        close_gripper_control = np.array([\n            PUPPET_GRIPPER_POSITION_CLOSE,\n            -PUPPET_GRIPPER_POSITION_CLOSE,\n            PUPPET_GRIPPER_POSITION_CLOSE,\n            -PUPPET_GRIPPER_POSITION_CLOSE,\n        ])\n        np.copyto(physics.data.ctrl, close_gripper_control)\n    def initialize_episode(self, physics):\n        \"\"\"Sets the state of the environment at the start of each episode.\"\"\"\n        super().initialize_episode(physics)\n    @staticmethod\n    def get_qpos(physics):\n        qpos_raw = physics.data.qpos.copy()\n        left_qpos_raw = qpos_raw[:8]\n        right_qpos_raw = qpos_raw[8:16]\n        left_arm_qpos = left_qpos_raw[:6]",
+        "type": "code",
+        "location": "/ee_sim_env.py:85-110"
+    },
+    "331": {
+        "file_id": 22,
+        "content": "This code segment sets the initial positions, orientations, and gripper control for both left and right sides of a simulated robot arm. It also defines an initialize_episode function and a get_qpos static method in a class inheriting from an unspecified base class. The left and right positions are set using numpy's copyto() function, and the gripper control is initialized to close position.",
+        "type": "comment"
+    },
+    "332": {
+        "file_id": 22,
+        "content": "        right_arm_qpos = right_qpos_raw[:6]\n        left_gripper_qpos = [PUPPET_GRIPPER_POSITION_NORMALIZE_FN(left_qpos_raw[6])]\n        right_gripper_qpos = [PUPPET_GRIPPER_POSITION_NORMALIZE_FN(right_qpos_raw[6])]\n        return np.concatenate([left_arm_qpos, left_gripper_qpos, right_arm_qpos, right_gripper_qpos])\n    @staticmethod\n    def get_qvel(physics):\n        qvel_raw = physics.data.qvel.copy()\n        left_qvel_raw = qvel_raw[:8]\n        right_qvel_raw = qvel_raw[8:16]\n        left_arm_qvel = left_qvel_raw[:6]\n        right_arm_qvel = right_qvel_raw[:6]\n        left_gripper_qvel = [PUPPET_GRIPPER_VELOCITY_NORMALIZE_FN(left_qvel_raw[6])]\n        right_gripper_qvel = [PUPPET_GRIPPER_VELOCITY_NORMALIZE_FN(right_qvel_raw[6])]\n        return np.concatenate([left_arm_qvel, left_gripper_qvel, right_arm_qvel, right_gripper_qvel])\n    @staticmethod\n    def get_env_state(physics):\n        raise NotImplementedError\n    def get_observation(self, physics):\n        # note: it is important to do .copy()\n        obs = collections.OrderedDict()",
+        "type": "code",
+        "location": "/ee_sim_env.py:111-133"
+    },
+    "333": {
+        "file_id": 22,
+        "content": "The code defines functions to extract joint positions, velocities, and environment state from physics data. It normalizes gripper position and velocity values using the respective PUPPET_*_NORMALIZE_FN functions. The get_observation function combines left and right arm joint positions, gripper positions, and velocities into a concatenated numpy array. The code also includes an unimplemented get_env_state method.",
+        "type": "comment"
+    },
+    "334": {
+        "file_id": 22,
+        "content": "        obs['qpos'] = self.get_qpos(physics)\n        obs['qvel'] = self.get_qvel(physics)\n        obs['env_state'] = self.get_env_state(physics)\n        obs['images'] = dict()\n        obs['images']['top'] = physics.render(height=480, width=640, camera_id='top')\n        # obs['images']['angle'] = physics.render(height=480, width=640, camera_id='angle')\n        # obs['images']['vis'] = physics.render(height=480, width=640, camera_id='front_close')\n        # used in scripted policy to obtain starting pose\n        obs['mocap_pose_left'] = np.concatenate([physics.data.mocap_pos[0], physics.data.mocap_quat[0]]).copy()\n        obs['mocap_pose_right'] = np.concatenate([physics.data.mocap_pos[1], physics.data.mocap_quat[1]]).copy()\n        # used when replaying joint trajectory\n        obs['gripper_ctrl'] = physics.data.ctrl.copy()\n        return obs\n    def get_reward(self, physics):\n        raise NotImplementedError\nclass TransferCubeEETask(BimanualViperXEETask):\n    def __init__(self, random=None):\n        super().__init__(random=random)",
+        "type": "code",
+        "location": "/ee_sim_env.py:134-155"
+    },
+    "335": {
+        "file_id": 22,
+        "content": "This code defines a class for an environment in which a robot arm needs to manipulate a cube. The environment is initialized and returns observation (obs) containing information about the state of the robot, images from different camera perspectives, starting pose of the left and right mocap hands, and gripper control data. It also defines a reward function that needs to be implemented for specific tasks within this environment. This class inherits from BimanualViperXEETask which is likely another class for similar environments.",
+        "type": "comment"
+    },
+    "336": {
+        "file_id": 22,
+        "content": "        self.max_reward = 4\n    def initialize_episode(self, physics):\n        \"\"\"Sets the state of the environment at the start of each episode.\"\"\"\n        self.initialize_robots(physics)\n        # randomize box position\n        cube_pose = sample_box_pose()\n        box_start_idx = physics.model.name2id('red_box_joint', 'joint')\n        np.copyto(physics.data.qpos[box_start_idx : box_start_idx + 7], cube_pose)\n        # print(f\"randomized cube position to {cube_position}\")\n        super().initialize_episode(physics)\n    @staticmethod\n    def get_env_state(physics):\n        env_state = physics.data.qpos.copy()[16:]\n        return env_state\n    def get_reward(self, physics):\n        # return whether left gripper is holding the box\n        all_contact_pairs = []\n        for i_contact in range(physics.data.ncon):\n            id_geom_1 = physics.data.contact[i_contact].geom1\n            id_geom_2 = physics.data.contact[i_contact].geom2\n            name_geom_1 = physics.model.id2name(id_geom_1, 'geom')\n            name_geom_2 = physics.model.id2name(id_geom_2, 'geom')",
+        "type": "code",
+        "location": "/ee_sim_env.py:156-181"
+    },
+    "337": {
+        "file_id": 22,
+        "content": "The code initializes the environment for each episode, randomizes the box position, and defines methods to get the environment state and reward in a physics simulation. The maximum reward is set to 4.",
+        "type": "comment"
+    },
+    "338": {
+        "file_id": 22,
+        "content": "            contact_pair = (name_geom_1, name_geom_2)\n            all_contact_pairs.append(contact_pair)\n        touch_left_gripper = (\"red_box\", \"vx300s_left/10_left_gripper_finger\") in all_contact_pairs\n        touch_right_gripper = (\"red_box\", \"vx300s_right/10_right_gripper_finger\") in all_contact_pairs\n        touch_table = (\"red_box\", \"table\") in all_contact_pairs\n        reward = 0\n        if touch_right_gripper:\n            reward = 1\n        if touch_right_gripper and not touch_table: # lifted\n            reward = 2\n        if touch_left_gripper: # attempted transfer\n            reward = 3\n        if touch_left_gripper and not touch_table: # successful transfer\n            reward = 4\n        return reward\nclass InsertionEETask(BimanualViperXEETask):\n    def __init__(self, random=None):\n        super().__init__(random=random)\n        self.max_reward = 4\n    def initialize_episode(self, physics):\n        \"\"\"Sets the state of the environment at the start of each episode.\"\"\"\n        self.initialize_robots(physics)",
+        "type": "code",
+        "location": "/ee_sim_env.py:182-208"
+    },
+    "339": {
+        "file_id": 22,
+        "content": "The code defines a class called \"InsertionEETask\" which inherits from the \"BimanualViperXEETask\". This task seems to be related to manipulating objects in a simulation environment. It initializes the state of the environment at the start of each episode by calling the \"initialize_robots()\" function. The code checks for different contact scenarios and assigns corresponding rewards, ranging from 0 to 4. The maximum reward is set to 4.",
+        "type": "comment"
+    },
+    "340": {
+        "file_id": 22,
+        "content": "        # randomize peg and socket position\n        peg_pose, socket_pose = sample_insertion_pose()\n        id2index = lambda j_id: 16 + (j_id - 16) * 7 # first 16 is robot qpos, 7 is pose dim # hacky\n        peg_start_id = physics.model.name2id('red_peg_joint', 'joint')\n        peg_start_idx = id2index(peg_start_id)\n        np.copyto(physics.data.qpos[peg_start_idx : peg_start_idx + 7], peg_pose)\n        # print(f\"randomized cube position to {cube_position}\")\n        socket_start_id = physics.model.name2id('blue_socket_joint', 'joint')\n        socket_start_idx = id2index(socket_start_id)\n        np.copyto(physics.data.qpos[socket_start_idx : socket_start_idx + 7], socket_pose)\n        # print(f\"randomized cube position to {cube_position}\")\n        super().initialize_episode(physics)\n    @staticmethod\n    def get_env_state(physics):\n        env_state = physics.data.qpos.copy()[16:]\n        return env_state\n    def get_reward(self, physics):\n        # return whether peg touches the pin\n        all_contact_pairs = []",
+        "type": "code",
+        "location": "/ee_sim_env.py:209-232"
+    },
+    "341": {
+        "file_id": 22,
+        "content": "This code initializes the episode by randomizing the peg and socket positions in a physics simulation. It converts joint IDs to indices, sets the new positions for the peg and socket using numpy copyto function, and calls the superclass' initialize_episode method. It also includes a get_env_state function which returns the environment state from the physics data qpos array excluding the first 16 elements (robot qpos), and a placeholder get_reward function that will return whether the peg touches the pin in all contact pairs.",
+        "type": "comment"
+    },
+    "342": {
+        "file_id": 22,
+        "content": "        for i_contact in range(physics.data.ncon):\n            id_geom_1 = physics.data.contact[i_contact].geom1\n            id_geom_2 = physics.data.contact[i_contact].geom2\n            name_geom_1 = physics.model.id2name(id_geom_1, 'geom')\n            name_geom_2 = physics.model.id2name(id_geom_2, 'geom')\n            contact_pair = (name_geom_1, name_geom_2)\n            all_contact_pairs.append(contact_pair)\n        touch_right_gripper = (\"red_peg\", \"vx300s_right/10_right_gripper_finger\") in all_contact_pairs\n        touch_left_gripper = (\"socket-1\", \"vx300s_left/10_left_gripper_finger\") in all_contact_pairs or \\\n                             (\"socket-2\", \"vx300s_left/10_left_gripper_finger\") in all_contact_pairs or \\\n                             (\"socket-3\", \"vx300s_left/10_left_gripper_finger\") in all_contact_pairs or \\\n                             (\"socket-4\", \"vx300s_left/10_left_gripper_finger\") in all_contact_pairs\n        peg_touch_table = (\"red_peg\", \"table\") in all_contact_pairs\n        socket_touch_table = (\"socket-1\", \"table\") in all_contact_pairs or \\",
+        "type": "code",
+        "location": "/ee_sim_env.py:233-248"
+    },
+    "343": {
+        "file_id": 22,
+        "content": "This code checks for contact between various objects in a physics simulation. It iterates through all contacts, retrieves the associated geometries and converts their IDs to names. Then, it identifies if a red peg is touching the right gripper, and checks multiple conditions for left gripper and socket-peg interactions with the table.",
+        "type": "comment"
+    },
+    "344": {
+        "file_id": 22,
+        "content": "                             (\"socket-2\", \"table\") in all_contact_pairs or \\\n                             (\"socket-3\", \"table\") in all_contact_pairs or \\\n                             (\"socket-4\", \"table\") in all_contact_pairs\n        peg_touch_socket = (\"red_peg\", \"socket-1\") in all_contact_pairs or \\\n                           (\"red_peg\", \"socket-2\") in all_contact_pairs or \\\n                           (\"red_peg\", \"socket-3\") in all_contact_pairs or \\\n                           (\"red_peg\", \"socket-4\") in all_contact_pairs\n        pin_touched = (\"red_peg\", \"pin\") in all_contact_pairs\n        reward = 0\n        if touch_left_gripper and touch_right_gripper: # touch both\n            reward = 1\n        if touch_left_gripper and touch_right_gripper and (not peg_touch_table) and (not socket_touch_table): # grasp both\n            reward = 2\n        if peg_touch_socket and (not peg_touch_table) and (not socket_touch_table): # peg and socket touching\n            reward = 3\n        if pin_touched: # successful insertion",
+        "type": "code",
+        "location": "/ee_sim_env.py:249-265"
+    },
+    "345": {
+        "file_id": 22,
+        "content": "This code determines the reward based on contact pairs. It checks for touching \"socket-1\" to \"table\", \"socket-2\" to \"table\", etc. It also checks if any of the pegs are touching a socket, table or both, and if the red peg is touching the pin. The reward is given based on these conditions. If both gripper touch something, it gives a reward of 1. If both gripper touches nothing but grasp something, reward is 2. If peg touches socket but not table, reward is 3. Finally, if any peg touches the pin, it's considered as successful insertion.",
+        "type": "comment"
+    },
+    "346": {
+        "file_id": 22,
+        "content": "            reward = 4\n        return reward",
+        "type": "code",
+        "location": "/ee_sim_env.py:266-267"
+    },
+    "347": {
+        "file_id": 22,
+        "content": "This code snippet assigns a fixed reward value of 4 and then returns it. This suggests the reward is determined solely by this function without any external factors influencing it.",
+        "type": "comment"
+    },
+    "348": {
+        "file_id": 23,
+        "content": "/imitate_episodes.py",
+        "type": "filepath"
+    },
+    "349": {
+        "file_id": 23,
+        "content": "This program trains a policy network for robot control using reinforcement learning, VQ-VAE implementation, and behavioral cloning, while logging data, saving checkpoints, and validating performance.",
+        "type": "summary"
+    },
+    "350": {
+        "file_id": 23,
+        "content": "import torch\nimport numpy as np\nimport os\nimport pickle\nimport argparse\nimport matplotlib.pyplot as plt\nfrom copy import deepcopy\nfrom itertools import repeat\nfrom tqdm import tqdm\nfrom einops import rearrange\nimport wandb\nimport time\nfrom torchvision import transforms\nfrom constants import FPS\nfrom constants import PUPPET_GRIPPER_JOINT_OPEN\nfrom utils import load_data # data functions\nfrom utils import sample_box_pose, sample_insertion_pose # robot functions\nfrom utils import compute_dict_mean, set_seed, detach_dict, calibrate_linear_vel, postprocess_base_action # helper functions\nfrom policy import ACTPolicy, CNNMLPPolicy, DiffusionPolicy\nfrom visualize_episodes import save_videos\nfrom detr.models.latent_model import Latent_Model_Transformer\nfrom sim_env import BOX_POSE\nimport IPython\ne = IPython.embed\ndef get_auto_index(dataset_dir):\n    max_idx = 1000\n    for i in range(max_idx+1):\n        if not os.path.isfile(os.path.join(dataset_dir, f'qpos_{i}.npy')):\n            return i\n    raise Exception(f\"Error getting auto index, or more than {max_idx} episodes\")",
+        "type": "code",
+        "location": "/imitate_episodes.py:1-35"
+    },
+    "351": {
+        "file_id": 23,
+        "content": "This code imports necessary libraries and defines functions for a reinforcement learning task. It sets up the environment, loads data, and initializes policy models. The `get_auto_index` function is used to find the next available index in the dataset directory.",
+        "type": "comment"
+    },
+    "352": {
+        "file_id": 23,
+        "content": "def main(args):\n    set_seed(1)\n    # command line parameters\n    is_eval = args['eval']\n    ckpt_dir = args['ckpt_dir']\n    policy_class = args['policy_class']\n    onscreen_render = args['onscreen_render']\n    task_name = args['task_name']\n    batch_size_train = args['batch_size']\n    batch_size_val = args['batch_size']\n    num_steps = args['num_steps']\n    eval_every = args['eval_every']\n    validate_every = args['validate_every']\n    save_every = args['save_every']\n    resume_ckpt_path = args['resume_ckpt_path']\n    # get task parameters\n    is_sim = task_name[:4] == 'sim_'\n    if is_sim or task_name == 'all':\n        from constants import SIM_TASK_CONFIGS\n        task_config = SIM_TASK_CONFIGS[task_name]\n    else:\n        from aloha_scripts.constants import TASK_CONFIGS\n        task_config = TASK_CONFIGS[task_name]\n    dataset_dir = task_config['dataset_dir']\n    # num_episodes = task_config['num_episodes']\n    episode_len = task_config['episode_len']\n    camera_names = task_config['camera_names']\n    stats_dir = task_config.get('stats_dir', None)",
+        "type": "code",
+        "location": "/imitate_episodes.py:37-65"
+    },
+    "353": {
+        "file_id": 23,
+        "content": "The code defines a main function that takes command line arguments and uses them to set up the environment for running the simulation. It first sets the seed, then parses various parameters such as is_eval, ckpt_dir, policy_class, onscreen_render, task_name, batch_size_train, batch_size_val, num_steps, eval_every, validate_every, save_every, and resume_ckpt_path. It also determines if the task is simulation-based or not, then retrieves the task parameters from either SIM_TASK_CONFIGS or TASK_CONFIGS based on the task name. These parameters include dataset_dir, episode_len, camera_names, and stats_dir.",
+        "type": "comment"
+    },
+    "354": {
+        "file_id": 23,
+        "content": "    sample_weights = task_config.get('sample_weights', None)\n    train_ratio = task_config.get('train_ratio', 0.99)\n    name_filter = task_config.get('name_filter', lambda n: True)\n    # fixed parameters\n    state_dim = 14\n    lr_backbone = 1e-5\n    backbone = 'resnet18'\n    if policy_class == 'ACT':\n        enc_layers = 4\n        dec_layers = 7\n        nheads = 8\n        policy_config = {'lr': args['lr'],\n                         'num_queries': args['chunk_size'],\n                         'kl_weight': args['kl_weight'],\n                         'hidden_dim': args['hidden_dim'],\n                         'dim_feedforward': args['dim_feedforward'],\n                         'lr_backbone': lr_backbone,\n                         'backbone': backbone,\n                         'enc_layers': enc_layers,\n                         'dec_layers': dec_layers,\n                         'nheads': nheads,\n                         'camera_names': camera_names,\n                         'vq': args['use_vq'],\n                         'vq_class': args['vq_class'],",
+        "type": "code",
+        "location": "/imitate_episodes.py:66-90"
+    },
+    "355": {
+        "file_id": 23,
+        "content": "This code sets various fixed parameters for the ACT policy. It gets the sample weights, train ratio, and name filter from the task configuration. The state dimension is set to 14. Backbone learning rate is set to 1e-5 with a predefined backbone model. If the policy class is ACT, it further defines encoder layers, decoder layers, number of attention heads, and other configurations for the policy based on provided arguments. Camera names are also defined if needed. It also handles whether or not to use VQ (if specified by args).",
+        "type": "comment"
+    },
+    "356": {
+        "file_id": 23,
+        "content": "                         'vq_dim': args['vq_dim'],\n                         'action_dim': 16,\n                         'no_encoder': args['no_encoder'],\n                         }\n    elif policy_class == 'Diffusion':\n        policy_config = {'lr': args['lr'],\n                         'camera_names': camera_names,\n                         'action_dim': 16,\n                         'observation_horizon': 1,\n                         'action_horizon': 8,\n                         'prediction_horizon': args['chunk_size'],\n                         'num_queries': args['chunk_size'],\n                         'num_inference_timesteps': 10,\n                         'ema_power': 0.75,\n                         'vq': False,\n                         }\n    elif policy_class == 'CNNMLP':\n        policy_config = {'lr': args['lr'], 'lr_backbone': lr_backbone, 'backbone' : backbone, 'num_queries': 1,\n                         'camera_names': camera_names,}\n    else:\n        raise NotImplementedError\n    actuator_config = {\n        'actuator_network_dir': args['actuator_network_dir'],",
+        "type": "code",
+        "location": "/imitate_episodes.py:91-115"
+    },
+    "357": {
+        "file_id": 23,
+        "content": "This code is setting up different configurations for the policy based on the given policy_class. The 'AuxCritic' configuration includes an auxiliary critic, 'Diffusion' uses diffusion-based policy, and 'CNNMLP' uses a CNN and MLP-based policy. All configurations include learning rate (lr), camera names, and actuator network directory settings.",
+        "type": "comment"
+    },
+    "358": {
+        "file_id": 23,
+        "content": "        'history_len': args['history_len'],\n        'future_len': args['future_len'],\n        'prediction_len': args['prediction_len'],\n    }\n    config = {\n        'num_steps': num_steps,\n        'eval_every': eval_every,\n        'validate_every': validate_every,\n        'save_every': save_every,\n        'ckpt_dir': ckpt_dir,\n        'resume_ckpt_path': resume_ckpt_path,\n        'episode_len': episode_len,\n        'state_dim': state_dim,\n        'lr': args['lr'],\n        'policy_class': policy_class,\n        'onscreen_render': onscreen_render,\n        'policy_config': policy_config,\n        'task_name': task_name,\n        'seed': args['seed'],\n        'temporal_agg': args['temporal_agg'],\n        'camera_names': camera_names,\n        'real_robot': not is_sim,\n        'load_pretrain': args['load_pretrain'],\n        'actuator_config': actuator_config,\n    }\n    if not os.path.isdir(ckpt_dir):\n        os.makedirs(ckpt_dir)\n    config_path = os.path.join(ckpt_dir, 'config.pkl')\n    expr_name = ckpt_dir.split('/')[-1]",
+        "type": "code",
+        "location": "/imitate_episodes.py:116-146"
+    },
+    "359": {
+        "file_id": 23,
+        "content": "The code is defining and initializing two dictionaries: 'train_args' and 'config'. These dictionaries store various arguments for the training process. The code also checks if a directory exists and creates it if not, and stores configuration information in a file named 'config.pkl' within that directory. This information will likely be used to train an agent for a specific task or environment.",
+        "type": "comment"
+    },
+    "360": {
+        "file_id": 23,
+        "content": "    if not is_eval:\n        wandb.init(project=\"mobile-aloha2\", reinit=True, entity=\"mobile-aloha2\", name=expr_name)\n        wandb.config.update(config)\n    with open(config_path, 'wb') as f:\n        pickle.dump(config, f)\n    if is_eval:\n        ckpt_names = [f'policy_last.ckpt']\n        results = []\n        for ckpt_name in ckpt_names:\n            success_rate, avg_return = eval_bc(config, ckpt_name, save_episode=True, num_rollouts=10)\n            # wandb.log({'success_rate': success_rate, 'avg_return': avg_return})\n            results.append([ckpt_name, success_rate, avg_return])\n        for ckpt_name, success_rate, avg_return in results:\n            print(f'{ckpt_name}: {success_rate=} {avg_return=}')\n        print()\n        exit()\n    train_dataloader, val_dataloader, stats, _ = load_data(dataset_dir, name_filter, camera_names, batch_size_train, batch_size_val, args['chunk_size'], args['skip_mirrored_data'], config['load_pretrain'], policy_class, stats_dir_l=stats_dir, sample_weights=sample_weights, train_ratio=train_ratio)",
+        "type": "code",
+        "location": "/imitate_episodes.py:147-165"
+    },
+    "361": {
+        "file_id": 23,
+        "content": "The code initializes the WandB for evaluation, updates the config file if not in evaluation mode, and then evaluates different checkpoints. It logs success rate and average return for each checkpoint, prints them on console, and exits the program. If in training mode, it loads data, creates dataloaders, and returns necessary objects.",
+        "type": "comment"
+    },
+    "362": {
+        "file_id": 23,
+        "content": "    # save dataset stats\n    stats_path = os.path.join(ckpt_dir, f'dataset_stats.pkl')\n    with open(stats_path, 'wb') as f:\n        pickle.dump(stats, f)\n    best_ckpt_info = train_bc(train_dataloader, val_dataloader, config)\n    best_step, min_val_loss, best_state_dict = best_ckpt_info\n    # save best checkpoint\n    ckpt_path = os.path.join(ckpt_dir, f'policy_best.ckpt')\n    torch.save(best_state_dict, ckpt_path)\n    print(f'Best ckpt, val loss {min_val_loss:.6f} @ step{best_step}')\n    wandb.finish()\ndef make_policy(policy_class, policy_config):\n    if policy_class == 'ACT':\n        policy = ACTPolicy(policy_config)\n    elif policy_class == 'CNNMLP':\n        policy = CNNMLPPolicy(policy_config)\n    elif policy_class == 'Diffusion':\n        policy = DiffusionPolicy(policy_config)\n    else:\n        raise NotImplementedError\n    return policy\ndef make_optimizer(policy_class, policy):\n    if policy_class == 'ACT':\n        optimizer = policy.configure_optimizers()\n    elif policy_class == 'CNNMLP':\n        optimizer = policy.configure_optimizers()",
+        "type": "code",
+        "location": "/imitate_episodes.py:167-198"
+    },
+    "363": {
+        "file_id": 23,
+        "content": "This code saves dataset statistics, trains a behavioral cloning model, and saves the best checkpoint. It also creates a policy object based on the policy class and configures an optimizer for it.",
+        "type": "comment"
+    },
+    "364": {
+        "file_id": 23,
+        "content": "    elif policy_class == 'Diffusion':\n        optimizer = policy.configure_optimizers()\n    else:\n        raise NotImplementedError\n    return optimizer\ndef get_image(ts, camera_names, rand_crop_resize=False):\n    curr_images = []\n    for cam_name in camera_names:\n        curr_image = rearrange(ts.observation['images'][cam_name], 'h w c -> c h w')\n        curr_images.append(curr_image)\n    curr_image = np.stack(curr_images, axis=0)\n    curr_image = torch.from_numpy(curr_image / 255.0).float().cuda().unsqueeze(0)\n    if rand_crop_resize:\n        print('rand crop resize is used!')\n        original_size = curr_image.shape[-2:]\n        ratio = 0.95\n        curr_image = curr_image[..., int(original_size[0] * (1 - ratio) / 2): int(original_size[0] * (1 + ratio) / 2),\n                     int(original_size[1] * (1 - ratio) / 2): int(original_size[1] * (1 + ratio) / 2)]\n        curr_image = curr_image.squeeze(0)\n        resize_transform = transforms.Resize(original_size, antialias=True)\n        curr_image = resize_transform(curr_image)",
+        "type": "code",
+        "location": "/imitate_episodes.py:199-222"
+    },
+    "365": {
+        "file_id": 23,
+        "content": "This code snippet checks the policy class and configures the optimizer accordingly. If the policy class is 'Diffusion', it sets the optimizer using the policy's method. For any other policy class, a NotImplementedError is raised. The get_image function takes timestep (ts), camera names, and rand_crop_resize flag as input. It retrieves images from ts observation and reshapes them into a tensor for further processing. If rand_crop_resize is True, it randomly crops and resizes the image while maintaining aspect ratio.",
+        "type": "comment"
+    },
+    "366": {
+        "file_id": 23,
+        "content": "        curr_image = curr_image.unsqueeze(0)\n    return curr_image\ndef eval_bc(config, ckpt_name, save_episode=True, num_rollouts=50):\n    set_seed(1000)\n    ckpt_dir = config['ckpt_dir']\n    state_dim = config['state_dim']\n    real_robot = config['real_robot']\n    policy_class = config['policy_class']\n    onscreen_render = config['onscreen_render']\n    policy_config = config['policy_config']\n    camera_names = config['camera_names']\n    max_timesteps = config['episode_len']\n    task_name = config['task_name']\n    temporal_agg = config['temporal_agg']\n    onscreen_cam = 'angle'\n    vq = config['policy_config']['vq']\n    actuator_config = config['actuator_config']\n    use_actuator_net = actuator_config['actuator_network_dir'] is not None\n    # load policy and stats\n    ckpt_path = os.path.join(ckpt_dir, ckpt_name)\n    policy = make_policy(policy_class, policy_config)\n    loading_status = policy.deserialize(torch.load(ckpt_path))\n    print(loading_status)\n    policy.cuda()\n    policy.eval()\n    if vq:\n        vq_dim = config['policy_config']['vq_dim']",
+        "type": "code",
+        "location": "/imitate_episodes.py:223-253"
+    },
+    "367": {
+        "file_id": 23,
+        "content": "The code snippet loads a policy model from a checkpoint file and sets the model to evaluation mode. It also initializes variables related to the task, such as state dimensions and camera names. The policy is created using a specified class and configuration, and if the policy uses a VQ-VAE, it initializes the corresponding dimensions.",
+        "type": "comment"
+    },
+    "368": {
+        "file_id": 23,
+        "content": "        vq_class = config['policy_config']['vq_class']\n        latent_model = Latent_Model_Transformer(vq_dim, vq_dim, vq_class)\n        latent_model_ckpt_path = os.path.join(ckpt_dir, 'latent_model_last.ckpt')\n        latent_model.deserialize(torch.load(latent_model_ckpt_path))\n        latent_model.eval()\n        latent_model.cuda()\n        print(f'Loaded policy from: {ckpt_path}, latent model from: {latent_model_ckpt_path}')\n    else:\n        print(f'Loaded: {ckpt_path}')\n    stats_path = os.path.join(ckpt_dir, f'dataset_stats.pkl')\n    with open(stats_path, 'rb') as f:\n        stats = pickle.load(f)\n    # if use_actuator_net:\n    #     prediction_len = actuator_config['prediction_len']\n    #     future_len = actuator_config['future_len']\n    #     history_len = actuator_config['history_len']\n    #     actuator_network_dir = actuator_config['actuator_network_dir']\n    #     from act.train_actuator_network import ActuatorNetwork\n    #     actuator_network = ActuatorNetwork(prediction_len)\n    #     actuator_network_path = os.path.join(actuator_network_dir, 'actuator_net_last.ckpt')",
+        "type": "code",
+        "location": "/imitate_episodes.py:254-274"
+    },
+    "369": {
+        "file_id": 23,
+        "content": "This code is loading a policy from the specified checkpoint path and a latent model from the specified latent_model_ckpt_path. It also loads dataset statistics from stats_path. Additionally, if use_actuator_net is True, it initializes an ActuatorNetwork object with specific parameters, and loads the actuator network from its designated checkpoint path.",
+        "type": "comment"
+    },
+    "370": {
+        "file_id": 23,
+        "content": "    #     loading_status = actuator_network.load_state_dict(torch.load(actuator_network_path))\n    #     actuator_network.eval()\n    #     actuator_network.cuda()\n    #     print(f'Loaded actuator network from: {actuator_network_path}, {loading_status}')\n    #     actuator_stats_path  = os.path.join(actuator_network_dir, 'actuator_net_stats.pkl')\n    #     with open(actuator_stats_path, 'rb') as f:\n    #         actuator_stats = pickle.load(f)\n    #     actuator_unnorm = lambda x: x * actuator_stats['commanded_speed_std'] + actuator_stats['commanded_speed_std']\n    #     actuator_norm = lambda x: (x - actuator_stats['observed_speed_mean']) / actuator_stats['observed_speed_mean']\n    #     def collect_base_action(all_actions, norm_episode_all_base_actions):\n    #         post_processed_actions = post_process(all_actions.squeeze(0).cpu().numpy())\n    #         norm_episode_all_base_actions += actuator_norm(post_processed_actions[:, -2:]).tolist()\n    pre_process = lambda s_qpos: (s_qpos - stats['qpos_mean']) / stats['qpos_std']",
+        "type": "code",
+        "location": "/imitate_episodes.py:275-290"
+    },
+    "371": {
+        "file_id": 23,
+        "content": "Loading the actuator network from the specified path, evaluating the network, moving it to GPU if available, and printing a message confirming the loading status. The actuator_net_stats.pkl file is opened and actuator stats are loaded. Two lambda functions, actuator_unnorm and actuator_norm, are defined for data normalization. A function named collect_base_action is defined to collect base actions after post-processing them. A pre_process lambda function is also defined for normalizing the state qpos.",
+        "type": "comment"
+    },
+    "372": {
+        "file_id": 23,
+        "content": "    if policy_class == 'Diffusion':\n        post_process = lambda a: ((a + 1) / 2) * (stats['action_max'] - stats['action_min']) + stats['action_min']\n    else:\n        post_process = lambda a: a * stats['action_std'] + stats['action_mean']\n    # load environment\n    if real_robot:\n        from aloha_scripts.robot_utils import move_grippers # requires aloha\n        from aloha_scripts.real_env import make_real_env # requires aloha\n        env = make_real_env(init_node=True, setup_robots=True, setup_base=True)\n        env_max_reward = 0\n    else:\n        from sim_env import make_sim_env\n        env = make_sim_env(task_name)\n        env_max_reward = env.task.max_reward\n    query_frequency = policy_config['num_queries']\n    if temporal_agg:\n        query_frequency = 1\n        num_queries = policy_config['num_queries']\n    if real_robot:\n        BASE_DELAY = 13\n        query_frequency -= BASE_DELAY\n    max_timesteps = int(max_timesteps * 1) # may increase for real-world tasks\n    episode_returns = []\n    highest_rewards = []",
+        "type": "code",
+        "location": "/imitate_episodes.py:291-318"
+    },
+    "373": {
+        "file_id": 23,
+        "content": "This code block initializes the environment and sets up parameters based on whether it is running in a real-world or simulation environment. It also accounts for temporal aggregation and potential delay in the real world. Finally, it initializes empty lists to store episode returns and highest rewards during the learning process.",
+        "type": "comment"
+    },
+    "374": {
+        "file_id": 23,
+        "content": "    for rollout_id in range(num_rollouts):\n        if real_robot:\n            e()\n        rollout_id += 0\n        ### set task\n        if 'sim_transfer_cube' in task_name:\n            BOX_POSE[0] = sample_box_pose() # used in sim reset\n        elif 'sim_insertion' in task_name:\n            BOX_POSE[0] = np.concatenate(sample_insertion_pose()) # used in sim reset\n        ts = env.reset()\n        ### onscreen render\n        if onscreen_render:\n            ax = plt.subplot()\n            plt_img = ax.imshow(env._physics.render(height=480, width=640, camera_id=onscreen_cam))\n            plt.ion()\n        ### evaluation loop\n        if temporal_agg:\n            all_time_actions = torch.zeros([max_timesteps, max_timesteps+num_queries, 16]).cuda()\n        # qpos_history = torch.zeros((1, max_timesteps, state_dim)).cuda()\n        qpos_history_raw = np.zeros((max_timesteps, state_dim))\n        image_list = [] # for visualization\n        qpos_list = []\n        target_qpos_list = []\n        rewards = []\n        # if use_actuator_net:",
+        "type": "code",
+        "location": "/imitate_episodes.py:319-347"
+    },
+    "375": {
+        "file_id": 23,
+        "content": "This code initializes a rollout_id for a loop, sets the task based on the task name, resets the environment, renders the screen if desired, and prepares variables for an evaluation loop. If \"use_actuator_net\" is enabled, this will be used.",
+        "type": "comment"
+    },
+    "376": {
+        "file_id": 23,
+        "content": "        #     norm_episode_all_base_actions = [actuator_norm(np.zeros(history_len, 2)).tolist()]\n        with torch.inference_mode():\n            time0 = time.time()\n            DT = 1 / FPS\n            culmulated_delay = 0 \n            for t in range(max_timesteps):\n                time1 = time.time()\n                ### update onscreen render and wait for DT\n                if onscreen_render:\n                    image = env._physics.render(height=480, width=640, camera_id=onscreen_cam)\n                    plt_img.set_data(image)\n                    plt.pause(DT)\n                ### process previous timestep to get qpos and image_list\n                time2 = time.time()\n                obs = ts.observation\n                if 'images' in obs:\n                    image_list.append(obs['images'])\n                else:\n                    image_list.append({'main': obs['image']})\n                qpos_numpy = np.array(obs['qpos'])\n                qpos_history_raw[t] = qpos_numpy\n                qpos = pre_process(qpos_numpy)",
+        "type": "code",
+        "location": "/imitate_episodes.py:348-370"
+    },
+    "377": {
+        "file_id": 23,
+        "content": "The code updates the onscreen render and waits for a delay (DT), processes previous timestep to get qpos and image_list, and pre-processes qpos. It does this within a loop for maximum timesteps, with timing measurements at specific points.",
+        "type": "comment"
+    },
+    "378": {
+        "file_id": 23,
+        "content": "                qpos = torch.from_numpy(qpos).float().cuda().unsqueeze(0)\n                # qpos_history[:, t] = qpos\n                if t % query_frequency == 0:\n                    curr_image = get_image(ts, camera_names, rand_crop_resize=(config['policy_class'] == 'Diffusion'))\n                # print('get image: ', time.time() - time2)\n                if t == 0:\n                    # warm up\n                    for _ in range(10):\n                        policy(qpos, curr_image)\n                    print('network warm up done')\n                    time1 = time.time()\n                ### query policy\n                time3 = time.time()\n                if config['policy_class'] == \"ACT\":\n                    if t % query_frequency == 0:\n                        if vq:\n                            if rollout_id == 0:\n                                for _ in range(10):\n                                    vq_sample = latent_model.generate(1, temperature=1, x=None)\n                                    print(torch.nonzero(vq_sample[0])[:, 1].cpu().numpy())",
+        "type": "code",
+        "location": "/imitate_episodes.py:371-392"
+    },
+    "379": {
+        "file_id": 23,
+        "content": "This code performs query-based policy execution in a reinforcement learning environment. It prepares input data and queries the policy network for action choices based on the current state. If the frequency requirement is met, it captures the image from a specified camera and applies any required preprocessing. The code also includes a warm-up step to prepare the neural network before executing the policy, and handles generating samples from a latent model if necessary.",
+        "type": "comment"
+    },
+    "380": {
+        "file_id": 23,
+        "content": "                            vq_sample = latent_model.generate(1, temperature=1, x=None)\n                            all_actions = policy(qpos, curr_image, vq_sample=vq_sample)\n                        else:\n                            # e()\n                            all_actions = policy(qpos, curr_image)\n                        # if use_actuator_net:\n                        #     collect_base_action(all_actions, norm_episode_all_base_actions)\n                        if real_robot:\n                            all_actions = torch.cat([all_actions[:, :-BASE_DELAY, :-2], all_actions[:, BASE_DELAY:, -2:]], dim=2)\n                    if temporal_agg:\n                        all_time_actions[[t], t:t+num_queries] = all_actions\n                        actions_for_curr_step = all_time_actions[:, t]\n                        actions_populated = torch.all(actions_for_curr_step != 0, axis=1)\n                        actions_for_curr_step = actions_for_curr_step[actions_populated]\n                        k = 0.01\n                        exp_weights = np.exp(-k * np.arange(len(actions_for_curr_step)))",
+        "type": "code",
+        "location": "/imitate_episodes.py:393-408"
+    },
+    "381": {
+        "file_id": 23,
+        "content": "This code generates an action based on the given state and either additional latent variables or just the state. If using a real robot, it modifies the generated actions to account for a base delay in the actuator response time. If temporal aggregation is enabled, the code collects all-time actions, filters out any zeros, and assigns weights based on an exponential function of the action index.",
+        "type": "comment"
+    },
+    "382": {
+        "file_id": 23,
+        "content": "                        exp_weights = exp_weights / exp_weights.sum()\n                        exp_weights = torch.from_numpy(exp_weights).cuda().unsqueeze(dim=1)\n                        raw_action = (actions_for_curr_step * exp_weights).sum(dim=0, keepdim=True)\n                    else:\n                        raw_action = all_actions[:, t % query_frequency]\n                        # if t % query_frequency == query_frequency - 1:\n                        #     # zero out base actions to avoid overshooting\n                        #     raw_action[0, -2:] = 0\n                elif config['policy_class'] == \"Diffusion\":\n                    if t % query_frequency == 0:\n                        all_actions = policy(qpos, curr_image)\n                        # if use_actuator_net:\n                        #     collect_base_action(all_actions, norm_episode_all_base_actions)\n                        if real_robot:\n                            all_actions = torch.cat([all_actions[:, :-BASE_DELAY, :-2], all_actions[:, BASE_DELAY:, -2:]], dim=2)",
+        "type": "code",
+        "location": "/imitate_episodes.py:409-423"
+    },
+    "383": {
+        "file_id": 23,
+        "content": "This code appears to be part of a larger program that utilizes different policies and actions for robotic control. It seems to handle policy selection based on the current time step, t, and query frequency. If the policy is set as \"Diffusion\", it retrieves new actions from the policy at specific intervals, potentially accounting for delays or base actions. The code also handles real robot interactions, adjusting action sequences accordingly.",
+        "type": "comment"
+    },
+    "384": {
+        "file_id": 23,
+        "content": "                    raw_action = all_actions[:, t % query_frequency]\n                elif config['policy_class'] == \"CNNMLP\":\n                    raw_action = policy(qpos, curr_image)\n                    all_actions = raw_action.unsqueeze(0)\n                    # if use_actuator_net:\n                    #     collect_base_action(all_actions, norm_episode_all_base_actions)\n                else:\n                    raise NotImplementedError\n                # print('query policy: ', time.time() - time3)\n                ### post-process actions\n                time4 = time.time()\n                raw_action = raw_action.squeeze(0).cpu().numpy()\n                action = post_process(raw_action)\n                target_qpos = action[:-2]\n                # if use_actuator_net:\n                #     assert(not temporal_agg)\n                #     if t % prediction_len == 0:\n                #         offset_start_ts = t + history_len\n                #         actuator_net_in = np.array(norm_episode_all_base_actions[offset_start_ts - history_len: offset_start_ts + future_len])",
+        "type": "code",
+        "location": "/imitate_episodes.py:424-444"
+    },
+    "385": {
+        "file_id": 23,
+        "content": "This code selects the policy based on the config value and performs necessary actions. It uses CNNMLP for querying the policy, post-processes the raw action output, and assigns target_qpos from the processed action values. It also handles actuator net usage with temporal aggregation if configured.",
+        "type": "comment"
+    },
+    "386": {
+        "file_id": 23,
+        "content": "                #         actuator_net_in = torch.from_numpy(actuator_net_in).float().unsqueeze(dim=0).cuda()\n                #         pred = actuator_network(actuator_net_in)\n                #         base_action_chunk = actuator_unnorm(pred.detach().cpu().numpy()[0])\n                #     base_action = base_action_chunk[t % prediction_len]\n                # else:\n                base_action = action[-2:]\n                # base_action = calibrate_linear_vel(base_action, c=0.19)\n                # base_action = postprocess_base_action(base_action)\n                # print('post process: ', time.time() - time4)\n                ### step the environment\n                time5 = time.time()\n                if real_robot:\n                    ts = env.step(target_qpos, base_action)\n                else:\n                    ts = env.step(target_qpos)\n                # print('step env: ', time.time() - time5)\n                ### for visualization\n                qpos_list.append(qpos_numpy)\n                target_qpos_list.append(target_qpos)",
+        "type": "code",
+        "location": "/imitate_episodes.py:445-465"
+    },
+    "387": {
+        "file_id": 23,
+        "content": "Code segment is responsible for updating the base action based on whether an actuator network prediction is available or not. If a prediction exists, it normalizes and detaches the prediction before selecting the relevant chunk. Else, it uses the last two elements of the given action as the base action after applying linear velocity calibration (commented out) and post-processing (also commented out). The code then steps the environment using the calculated base action and appends current qpos to qpos_list and target_qpos to target_qpos_list for visualization purposes.",
+        "type": "comment"
+    },
+    "388": {
+        "file_id": 23,
+        "content": "                rewards.append(ts.reward)\n                duration = time.time() - time1\n                sleep_time = max(0, DT - duration)\n                # print(sleep_time)\n                time.sleep(sleep_time)\n                # time.sleep(max(0, DT - duration - culmulated_delay))\n                if duration >= DT:\n                    culmulated_delay += (duration - DT)\n                    print(f'Warning: step duration: {duration:.3f} s at step {t} longer than DT: {DT} s, culmulated delay: {culmulated_delay:.3f} s')\n                # else:\n                #     culmulated_delay = max(0, culmulated_delay - (DT - duration))\n            print(f'Avg fps {max_timesteps / (time.time() - time0)}')\n            plt.close()\n        if real_robot:\n            move_grippers([env.puppet_bot_left, env.puppet_bot_right], [PUPPET_GRIPPER_JOINT_OPEN] * 2, move_time=0.5)  # open\n            # save qpos_history_raw\n            log_id = get_auto_index(ckpt_dir)\n            np.save(os.path.join(ckpt_dir, f'qpos_{log_id}.npy'), qpos_history_raw)",
+        "type": "code",
+        "location": "/imitate_episodes.py:466-484"
+    },
+    "389": {
+        "file_id": 23,
+        "content": "The code appends rewards to a list, calculates and controls sleep time for synchronization, handles step duration longer than DT by accumulating delay, prints warning and updates cumulative delay if necessary, calculates average FPS, closes the plot window. If real_robot is True, it opens grippers and saves qpos_history_raw in a specified directory with an auto-incrementing index.",
+        "type": "comment"
+    },
+    "390": {
+        "file_id": 23,
+        "content": "            plt.figure(figsize=(10, 20))\n            # plot qpos_history_raw for each qpos dim using subplots\n            for i in range(state_dim):\n                plt.subplot(state_dim, 1, i+1)\n                plt.plot(qpos_history_raw[:, i])\n                # remove x axis\n                if i != state_dim - 1:\n                    plt.xticks([])\n            plt.tight_layout()\n            plt.savefig(os.path.join(ckpt_dir, f'qpos_{log_id}.png'))\n            plt.close()\n        rewards = np.array(rewards)\n        episode_return = np.sum(rewards[rewards!=None])\n        episode_returns.append(episode_return)\n        episode_highest_reward = np.max(rewards)\n        highest_rewards.append(episode_highest_reward)\n        print(f'Rollout {rollout_id}\\n{episode_return=}, {episode_highest_reward=}, {env_max_reward=}, Success: {episode_highest_reward==env_max_reward}')\n        # if save_episode:\n        #     save_videos(image_list, DT, video_path=os.path.join(ckpt_dir, f'video{rollout_id}.mp4'))\n    success_rate = np.mean(np.array(highest_rewards) == env_max_reward)",
+        "type": "code",
+        "location": "/imitate_episodes.py:485-508"
+    },
+    "391": {
+        "file_id": 23,
+        "content": "The code plots the history of qpos for each dimension and saves it as an image, calculates episode return and highest reward, prints the results, and checks if the highest reward equals the environment's maximum reward. It then calculates the success rate based on the highest rewards.",
+        "type": "comment"
+    },
+    "392": {
+        "file_id": 23,
+        "content": "    avg_return = np.mean(episode_returns)\n    summary_str = f'\\nSuccess rate: {success_rate}\\nAverage return: {avg_return}\\n\\n'\n    for r in range(env_max_reward+1):\n        more_or_equal_r = (np.array(highest_rewards) >= r).sum()\n        more_or_equal_r_rate = more_or_equal_r / num_rollouts\n        summary_str += f'Reward >= {r}: {more_or_equal_r}/{num_rollouts} = {more_or_equal_r_rate*100}%\\n'\n    print(summary_str)\n    # save success rate to txt\n    result_file_name = 'result_' + ckpt_name.split('.')[0] + '.txt'\n    with open(os.path.join(ckpt_dir, result_file_name), 'w') as f:\n        f.write(summary_str)\n        f.write(repr(episode_returns))\n        f.write('\\n\\n')\n        f.write(repr(highest_rewards))\n    return success_rate, avg_return\ndef forward_pass(data, policy):\n    image_data, qpos_data, action_data, is_pad = data\n    image_data, qpos_data, action_data, is_pad = image_data.cuda(), qpos_data.cuda(), action_data.cuda(), is_pad.cuda()\n    return policy(qpos_data, image_data, action_data, is_pad) # TODO remove None",
+        "type": "code",
+        "location": "/imitate_episodes.py:509-532"
+    },
+    "393": {
+        "file_id": 23,
+        "content": "Code block calculates success rate and average return from episode results, displays summary in console, writes the summary to a text file along with episode returns and highest rewards.\n\nThe forward_pass function takes input data (image_data, qpos_data, action_data, is_pad) and passes it through the policy network.",
+        "type": "comment"
+    },
+    "394": {
+        "file_id": 23,
+        "content": "def train_bc(train_dataloader, val_dataloader, config):\n    num_steps = config['num_steps']\n    ckpt_dir = config['ckpt_dir']\n    seed = config['seed']\n    policy_class = config['policy_class']\n    policy_config = config['policy_config']\n    eval_every = config['eval_every']\n    validate_every = config['validate_every']\n    save_every = config['save_every']\n    set_seed(seed)\n    policy = make_policy(policy_class, policy_config)\n    if config['load_pretrain']:\n        loading_status = policy.deserialize(torch.load(os.path.join('/home/zfu/interbotix_ws/src/act/ckpts/pretrain_all', 'policy_step_50000_seed_0.ckpt')))\n        print(f'loaded! {loading_status}')\n    if config['resume_ckpt_path'] is not None:\n        loading_status = policy.deserialize(torch.load(config['resume_ckpt_path']))\n        print(f'Resume policy from: {config[\"resume_ckpt_path\"]}, Status: {loading_status}')\n    policy.cuda()\n    optimizer = make_optimizer(policy_class, policy)\n    min_val_loss = np.inf\n    best_ckpt_info = None\n    train_dataloader = repeater(train_dataloader)",
+        "type": "code",
+        "location": "/imitate_episodes.py:535-560"
+    },
+    "395": {
+        "file_id": 23,
+        "content": "The code defines a \"train_bc\" function which trains a policy using a specified data loader. It sets up various configurations, checks if it should load pre-trained weights or resume training from a previous checkpoint, and initializes the optimizer. The function uses a repeater to repeat the training data loader for consistency.",
+        "type": "comment"
+    },
+    "396": {
+        "file_id": 23,
+        "content": "    for step in tqdm(range(num_steps+1)):\n        # validation\n        if step % validate_every == 0:\n            print('validating')\n            with torch.inference_mode():\n                policy.eval()\n                validation_dicts = []\n                for batch_idx, data in enumerate(val_dataloader):\n                    forward_dict = forward_pass(data, policy)\n                    validation_dicts.append(forward_dict)\n                    if batch_idx > 50:\n                        break\n                validation_summary = compute_dict_mean(validation_dicts)\n                epoch_val_loss = validation_summary['loss']\n                if epoch_val_loss < min_val_loss:\n                    min_val_loss = epoch_val_loss\n                    best_ckpt_info = (step, min_val_loss, deepcopy(policy.serialize()))\n            for k in list(validation_summary.keys()):\n                validation_summary[f'val_{k}'] = validation_summary.pop(k)            \n            wandb.log(validation_summary, step=step)\n            print(f'Val loss:   {epoch_val_loss:.5f}')",
+        "type": "code",
+        "location": "/imitate_episodes.py:561-584"
+    },
+    "397": {
+        "file_id": 23,
+        "content": "This code is performing a validation step at certain intervals during training. It logs the validation summary to WandB and keeps track of the best validation loss seen so far. The best model checkpoint information is updated if the current validation loss is lower than the minimum previously observed.",
+        "type": "comment"
+    },
+    "398": {
+        "file_id": 23,
+        "content": "            summary_string = ''\n            for k, v in validation_summary.items():\n                summary_string += f'{k}: {v.item():.3f} '\n            print(summary_string)\n        # evaluation\n        if (step > 0) and (step % eval_every == 0):\n            # first save then eval\n            ckpt_name = f'policy_step_{step}_seed_{seed}.ckpt'\n            ckpt_path = os.path.join(ckpt_dir, ckpt_name)\n            torch.save(policy.serialize(), ckpt_path)\n            success, _ = eval_bc(config, ckpt_name, save_episode=True, num_rollouts=10)\n            wandb.log({'success': success}, step=step)\n        # training\n        policy.train()\n        optimizer.zero_grad()\n        data = next(train_dataloader)\n        forward_dict = forward_pass(data, policy)\n        # backward\n        loss = forward_dict['loss']\n        loss.backward()\n        optimizer.step()\n        wandb.log(forward_dict, step=step) # not great, make training 1-2% slower\n        if step % save_every == 0:\n            ckpt_path = os.path.join(ckpt_dir, f'policy_step_{step}_seed_{seed}.ckpt')",
+        "type": "code",
+        "location": "/imitate_episodes.py:585-611"
+    },
+    "399": {
+        "file_id": 23,
+        "content": "The code performs validation, evaluation, and training steps. It logs the success rate of evaluations, saves checkpoints at certain intervals, trains a policy network using forward and backward passes, and logs data for later analysis.",
+        "type": "comment"
+    }
+}

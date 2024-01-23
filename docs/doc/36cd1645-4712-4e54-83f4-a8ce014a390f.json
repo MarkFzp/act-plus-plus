@@ -1,0 +1,10 @@
+{
+    "summary": "The code imports necessary modules and sets up a setup script for the \"detr\" package using setuptools. It defines the package name, version, licenses, and reads the long description from the README file.",
+    "details": [
+        {
+            "comment": "The code imports necessary modules and sets up a setup script for the \"detr\" package using setuptools. It defines the package name, version, licenses, and reads the long description from the README file.",
+            "location": "\"/media/root/Prima/works/act-plus-plus/docs/src/detr/setup.py\":0-9",
+            "content": "from distutils.core import setup\nfrom setuptools import find_packages\nsetup(\n    name='detr',\n    version='0.0.0',\n    packages=find_packages(),\n    license='MIT License',\n    long_description=open('README.md').read(),\n)"
+        }
+    ]
+}

@@ -1,0 +1,545 @@
+{
+    "100": {
+        "file_id": 7,
+        "content": "This part of the codebase is modified from DETR https://github.com/facebookresearch/detr under APACHE 2.0.\n    @article{Carion2020EndtoEndOD,\n      title={End-to-End Object Detection with Transformers},\n      author={Nicolas Carion and Francisco Massa and Gabriel Synnaeve and Nicolas Usunier and Alexander Kirillov and Sergey Zagoruyko},\n      journal={ArXiv},\n      year={2020},\n      volume={abs/2005.12872}\n    }",
+        "type": "code",
+        "location": "/detr/README.md:1-9"
+    },
+    "101": {
+        "file_id": 7,
+        "content": "This code snippet is modified from the DETR repository and licensed under Apache 2.0. It cites End-to-End Object Detection with Transformers paper as its reference.",
+        "type": "comment"
+    },
+    "102": {
+        "file_id": 8,
+        "content": "/detr/main.py",
+        "type": "filepath"
+    },
+    "103": {
+        "file_id": 8,
+        "content": "This script uses argparse to control options for a deep learning model's transformer detector, initializing the model on GPU and creating an AdamW optimizer before returning the model and optimizer.",
+        "type": "summary"
+    },
+    "104": {
+        "file_id": 8,
+        "content": "# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved\nimport argparse\nfrom pathlib import Path\nimport numpy as np\nimport torch\nfrom .models import build_ACT_model, build_CNNMLP_model\nimport IPython\ne = IPython.embed\ndef get_args_parser():\n    parser = argparse.ArgumentParser('Set transformer detector', add_help=False)\n    parser.add_argument('--lr', default=1e-4, type=float) # will be overridden\n    parser.add_argument('--lr_backbone', default=1e-5, type=float) # will be overridden\n    parser.add_argument('--batch_size', default=2, type=int) # not used\n    parser.add_argument('--weight_decay', default=1e-4, type=float)\n    parser.add_argument('--epochs', default=300, type=int) # not used\n    parser.add_argument('--lr_drop', default=200, type=int) # not used\n    parser.add_argument('--clip_max_norm', default=0.1, type=float, # not used\n                        help='gradient clipping max norm')\n    # Model parameters\n    # * Backbone\n    parser.add_argument('--backbone', default='resnet18', type=str, # will be overridden",
+        "type": "code",
+        "location": "/detr/main.py:1-25"
+    },
+    "105": {
+        "file_id": 8,
+        "content": "This code imports necessary libraries and functions, defines a parser for command-line arguments, and sets default values for those arguments. It also includes options to customize the backbone model, learning rates, and weight decay for training a transformer detector.",
+        "type": "comment"
+    },
+    "106": {
+        "file_id": 8,
+        "content": "                        help=\"Name of the convolutional backbone to use\")\n    parser.add_argument('--dilation', action='store_true',\n                        help=\"If true, we replace stride with dilation in the last convolutional block (DC5)\")\n    parser.add_argument('--position_embedding', default='sine', type=str, choices=('sine', 'learned'),\n                        help=\"Type of positional embedding to use on top of the image features\")\n    parser.add_argument('--camera_names', default=[], type=list, # will be overridden\n                        help=\"A list of camera names\")\n    # * Transformer\n    parser.add_argument('--enc_layers', default=4, type=int, # will be overridden\n                        help=\"Number of encoding layers in the transformer\")\n    parser.add_argument('--dec_layers', default=6, type=int, # will be overridden\n                        help=\"Number of decoding layers in the transformer\")\n    parser.add_argument('--dim_feedforward', default=2048, type=int, # will be overridden\n",
+        "type": "code",
+        "location": "/detr/main.py:26-40"
+    },
+    "107": {
+        "file_id": 8,
+        "content": "This code is defining command line arguments for the main function of a deep learning model. The options include specifying the backbone, enabling dilation in the last convolutional block, choosing the type of positional embedding, and setting the number of encoding and decoding layers as well as the feedforward dimension size in the transformer component of the model.",
+        "type": "comment"
+    },
+    "108": {
+        "file_id": 8,
+        "content": "                        help=\"Intermediate size of the feedforward layers in the transformer blocks\")\n    parser.add_argument('--hidden_dim', default=256, type=int, # will be overridden\n                        help=\"Size of the embeddings (dimension of the transformer)\")\n    parser.add_argument('--dropout', default=0.1, type=float,\n                        help=\"Dropout applied in the transformer\")\n    parser.add_argument('--nheads', default=8, type=int, # will be overridden\n                        help=\"Number of attention heads inside the transformer's attentions\")\n    parser.add_argument('--num_queries', default=400, type=int, # will be overridden\n                        help=\"Number of query slots\")\n    parser.add_argument('--pre_norm', action='store_true')\n    # * Segmentation\n    parser.add_argument('--masks', action='store_true',\n                        help=\"Train segmentation head if the flag is provided\")\n    # repeat args in imitate_episodes just to avoid error. Will not be used\n    parser.add_argument('--eval', action='store_true')",
+        "type": "code",
+        "location": "/detr/main.py:40-56"
+    },
+    "109": {
+        "file_id": 8,
+        "content": "This code is using the argparse module to define command line arguments for a Python script. The arguments include options such as intermediate layer size, hidden dimensions, dropout rate, number of attention heads, number of query slots, pre-normalization, and training segmentation head. The `eval` argument is used to evaluate the model.",
+        "type": "comment"
+    },
+    "110": {
+        "file_id": 8,
+        "content": "    parser.add_argument('--onscreen_render', action='store_true')\n    parser.add_argument('--ckpt_dir', action='store', type=str, help='ckpt_dir', required=True)\n    parser.add_argument('--policy_class', action='store', type=str, help='policy_class, capitalize', required=True)\n    parser.add_argument('--task_name', action='store', type=str, help='task_name', required=True)\n    parser.add_argument('--seed', action='store', type=int, help='seed', required=True)\n    parser.add_argument('--num_steps', action='store', type=int, help='num_epochs', required=True)\n    parser.add_argument('--kl_weight', action='store', type=int, help='KL Weight', required=False)\n    parser.add_argument('--chunk_size', action='store', type=int, help='chunk_size', required=False)\n    parser.add_argument('--temporal_agg', action='store_true')\n    parser.add_argument('--use_vq', action='store_true')\n    parser.add_argument('--vq_class', action='store', type=int, help='vq_class', required=False)\n    parser.add_argument('--vq_dim', action='store', type=int, help='vq_dim', required=False)",
+        "type": "code",
+        "location": "/detr/main.py:57-69"
+    },
+    "111": {
+        "file_id": 8,
+        "content": "The code defines command-line arguments using the \"argparse\" module. It requires a directory for checkpoints, policy class name, task name, seed value, number of steps, and optional arguments like KL weight, chunk size, temporal aggregation, use VQ, VQ class, and VQ dimension.",
+        "type": "comment"
+    },
+    "112": {
+        "file_id": 8,
+        "content": "    parser.add_argument('--load_pretrain', action='store_true', default=False)\n    parser.add_argument('--action_dim', action='store', type=int, required=False)\n    parser.add_argument('--eval_every', action='store', type=int, default=500, help='eval_every', required=False)\n    parser.add_argument('--validate_every', action='store', type=int, default=500, help='validate_every', required=False)\n    parser.add_argument('--save_every', action='store', type=int, default=500, help='save_every', required=False)\n    parser.add_argument('--resume_ckpt_path', action='store', type=str, help='load_ckpt_path', required=False)\n    parser.add_argument('--no_encoder', action='store_true')\n    parser.add_argument('--skip_mirrored_data', action='store_true')\n    parser.add_argument('--actuator_network_dir', action='store', type=str, help='actuator_network_dir', required=False)\n    parser.add_argument('--history_len', action='store', type=int)\n    parser.add_argument('--future_len', action='store', type=int)\n    parser.add_argument('--prediction_len', action='store', type=int)",
+        "type": "code",
+        "location": "/detr/main.py:70-81"
+    },
+    "113": {
+        "file_id": 8,
+        "content": "The code snippet is from a Python script that uses the 'argparse' module to add various command-line arguments with default values, types, and help messages. These arguments control options such as loading pre-trained data, action dimension, evaluation intervals, validation intervals, saving intervals, resuming from a checkpoint file path, skipping mirrored data, and specifying network directories for actuators.",
+        "type": "comment"
+    },
+    "114": {
+        "file_id": 8,
+        "content": "    return parser\ndef build_ACT_model_and_optimizer(args_override):\n    parser = argparse.ArgumentParser('DETR training and evaluation script', parents=[get_args_parser()])\n    args = parser.parse_args()\n    for k, v in args_override.items():\n        setattr(args, k, v)\n    model = build_ACT_model(args)\n    model.cuda()\n    param_dicts = [\n        {\"params\": [p for n, p in model.named_parameters() if \"backbone\" not in n and p.requires_grad]},\n        {\n            \"params\": [p for n, p in model.named_parameters() if \"backbone\" in n and p.requires_grad],\n            \"lr\": args.lr_backbone,\n        },\n    ]\n    optimizer = torch.optim.AdamW(param_dicts, lr=args.lr,\n                                  weight_decay=args.weight_decay)\n    return model, optimizer\ndef build_CNNMLP_model_and_optimizer(args_override):\n    parser = argparse.ArgumentParser('DETR training and evaluation script', parents=[get_args_parser()])\n    args = parser.parse_args()\n    for k, v in args_override.items():\n        setattr(args, k, v)\n    model = build_CNNMLP_model(args)",
+        "type": "code",
+        "location": "/detr/main.py:83-116"
+    },
+    "115": {
+        "file_id": 8,
+        "content": "This code defines functions `build_ACT_model_and_optimizer` and `build_CNNMLP_model_and_optimizer`. The functions parse arguments for DETR training and evaluation script, build the respective models, and set up AdamW optimizers with specified learning rates and weight decay.",
+        "type": "comment"
+    },
+    "116": {
+        "file_id": 8,
+        "content": "    model.cuda()\n    param_dicts = [\n        {\"params\": [p for n, p in model.named_parameters() if \"backbone\" not in n and p.requires_grad]},\n        {\n            \"params\": [p for n, p in model.named_parameters() if \"backbone\" in n and p.requires_grad],\n            \"lr\": args.lr_backbone,\n        },\n    ]\n    optimizer = torch.optim.AdamW(param_dicts, lr=args.lr,\n                                  weight_decay=args.weight_decay)\n    return model, optimizer",
+        "type": "code",
+        "location": "/detr/main.py:117-129"
+    },
+    "117": {
+        "file_id": 8,
+        "content": "The code initializes the model on GPU, separates backbone and non-backbone parameters into two dictionaries for different learning rates, creates an AdamW optimizer with specified learning rate and weight decay, and returns the model and optimizer.",
+        "type": "comment"
+    },
+    "118": {
+        "file_id": 9,
+        "content": "/detr/models/__init__.py",
+        "type": "filepath"
+    },
+    "119": {
+        "file_id": 9,
+        "content": "The code imports the build functions for DETR-VAE and CNN+MLP models from their respective modules. It defines two model building functions, `build_ACT_model` and `build_CNNMLP_model`, which return the built models using the imported build functions based on given arguments.",
+        "type": "summary"
+    },
+    "120": {
+        "file_id": 9,
+        "content": "# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved\nfrom .detr_vae import build as build_vae\nfrom .detr_vae import build_cnnmlp as build_cnnmlp\ndef build_ACT_model(args):\n    return build_vae(args)\ndef build_CNNMLP_model(args):\n    return build_cnnmlp(args)",
+        "type": "code",
+        "location": "/detr/models/__init__.py:1-9"
+    },
+    "121": {
+        "file_id": 9,
+        "content": "The code imports the build functions for DETR-VAE and CNN+MLP models from their respective modules. It defines two model building functions, `build_ACT_model` and `build_CNNMLP_model`, which return the built models using the imported build functions based on given arguments.",
+        "type": "comment"
+    },
+    "122": {
+        "file_id": 10,
+        "content": "/detr/models/backbone.py",
+        "type": "filepath"
+    },
+    "123": {
+        "file_id": 10,
+        "content": "The code defines a Backbone class for ResNet backbones with frozen BatchNorm layers and builds a vision transformer backbone model using position embedding.",
+        "type": "summary"
+    },
+    "124": {
+        "file_id": 10,
+        "content": "# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved\n\"\"\"\nBackbone modules.\n\"\"\"\nfrom collections import OrderedDict\nimport torch\nimport torch.nn.functional as F\nimport torchvision\nfrom torch import nn\nfrom torchvision.models._utils import IntermediateLayerGetter\nfrom typing import Dict, List\nfrom util.misc import NestedTensor, is_main_process\nfrom .position_encoding import build_position_encoding\nimport IPython\ne = IPython.embed\nclass FrozenBatchNorm2d(torch.nn.Module):\n    \"\"\"\n    BatchNorm2d where the batch statistics and the affine parameters are fixed.\n    Copy-paste from torchvision.misc.ops with added eps before rqsrt,\n    without which any other policy_models than torchvision.policy_models.resnet[18,34,50,101]\n    produce nans.\n    \"\"\"\n    def __init__(self, n):\n        super(FrozenBatchNorm2d, self).__init__()\n        self.register_buffer(\"weight\", torch.ones(n))\n        self.register_buffer(\"bias\", torch.zeros(n))\n        self.register_buffer(\"running_mean\", torch.zeros(n))\n        self.register_buffer(\"running_var\", torch.ones(n))",
+        "type": "code",
+        "location": "/detr/models/backbone.py:1-35"
+    },
+    "125": {
+        "file_id": 10,
+        "content": "This code snippet defines a class called \"FrozenBatchNorm2d\" which extends torch.nn.Module and fixes the batch statistics and affine parameters in BatchNorm2d. It also initializes buffers for weight, bias, running_mean, and running_var with appropriate values. The purpose is to avoid the BatchNorm2d parameters from updating during training, enabling it to function as a frozen layer.",
+        "type": "comment"
+    },
+    "126": {
+        "file_id": 10,
+        "content": "    def _load_from_state_dict(self, state_dict, prefix, local_metadata, strict,\n                              missing_keys, unexpected_keys, error_msgs):\n        num_batches_tracked_key = prefix + 'num_batches_tracked'\n        if num_batches_tracked_key in state_dict:\n            del state_dict[num_batches_tracked_key]\n        super(FrozenBatchNorm2d, self)._load_from_state_dict(\n            state_dict, prefix, local_metadata, strict,\n            missing_keys, unexpected_keys, error_msgs)\n    def forward(self, x):\n        # move reshapes to the beginning\n        # to make it fuser-friendly\n        w = self.weight.reshape(1, -1, 1, 1)\n        b = self.bias.reshape(1, -1, 1, 1)\n        rv = self.running_var.reshape(1, -1, 1, 1)\n        rm = self.running_mean.reshape(1, -1, 1, 1)\n        eps = 1e-5\n        scale = w * (rv + eps).rsqrt()\n        bias = b - rm * scale\n        return x * scale + bias\nclass BackboneBase(nn.Module):\n    def __init__(self, backbone: nn.Module, train_backbone: bool, num_channels: int, return_interm_layers: bool):",
+        "type": "code",
+        "location": "/detr/models/backbone.py:37-62"
+    },
+    "127": {
+        "file_id": 10,
+        "content": "Function \"_load_from_state_dict\" deletes \"num_batches_tracked_key\" from state_dict, then calls parent class's version of _load_from_state_dict. Function \"forward\" reshapes weights and biases for efficient processing, calculates scale and bias, and returns the processed input. Class \"BackboneBase\" initializes with backbone, train_backbone, num_channels, and return_interm_layers parameters.",
+        "type": "comment"
+    },
+    "128": {
+        "file_id": 10,
+        "content": "        super().__init__()\n        # for name, parameter in backbone.named_parameters(): # only train later layers # TODO do we want this?\n        #     if not train_backbone or 'layer2' not in name and 'layer3' not in name and 'layer4' not in name:\n        #         parameter.requires_grad_(False)\n        if return_interm_layers:\n            return_layers = {\"layer1\": \"0\", \"layer2\": \"1\", \"layer3\": \"2\", \"layer4\": \"3\"}\n        else:\n            return_layers = {'layer4': \"0\"}\n        self.body = IntermediateLayerGetter(backbone, return_layers=return_layers)\n        self.num_channels = num_channels\n    def forward(self, tensor):\n        xs = self.body(tensor)\n        return xs\n        # out: Dict[str, NestedTensor] = {}\n        # for name, x in xs.items():\n        #     m = tensor_list.mask\n        #     assert m is not None\n        #     mask = F.interpolate(m[None].float(), size=x.shape[-2:]).to(torch.bool)[0]\n        #     out[name] = NestedTensor(x, mask)\n        # return out\nclass Backbone(BackboneBase):",
+        "type": "code",
+        "location": "/detr/models/backbone.py:63-86"
+    },
+    "129": {
+        "file_id": 10,
+        "content": "This code defines a Backbone class in Python, which is part of a larger codebase. The class extends the BackboneBase and includes an init method to initialize the object, and a forward method for processing input data through the backbone model. It also handles nested tensors and returns them in a dictionary format.",
+        "type": "comment"
+    },
+    "130": {
+        "file_id": 10,
+        "content": "    \"\"\"ResNet backbone with frozen BatchNorm.\"\"\"\n    def __init__(self, name: str,\n                 train_backbone: bool,\n                 return_interm_layers: bool,\n                 dilation: bool):\n        backbone = getattr(torchvision.models, name)(\n            replace_stride_with_dilation=[False, False, dilation],\n            pretrained=is_main_process(), norm_layer=FrozenBatchNorm2d) # pretrained # TODO do we want frozen batch_norm??\n        num_channels = 512 if name in ('resnet18', 'resnet34') else 2048\n        super().__init__(backbone, train_backbone, num_channels, return_interm_layers)\nclass Joiner(nn.Sequential):\n    def __init__(self, backbone, position_embedding):\n        super().__init__(backbone, position_embedding)\n    def forward(self, tensor_list: NestedTensor):\n        xs = self[0](tensor_list)\n        out: List[NestedTensor] = []\n        pos = []\n        for name, x in xs.items():\n            out.append(x)\n            # position encoding\n            pos.append(self[1](x).to(x.dtype))\n        return out, pos",
+        "type": "code",
+        "location": "/detr/models/backbone.py:87-112"
+    },
+    "131": {
+        "file_id": 10,
+        "content": "The code defines a ResNet backbone model with frozen BatchNorm for transfer learning tasks. It includes an option to freeze the BatchNorm layers and a Joiner class that combines the output of the backbone and position encoding for further processing in a list format.",
+        "type": "comment"
+    },
+    "132": {
+        "file_id": 10,
+        "content": "def build_backbone(args):\n    position_embedding = build_position_encoding(args)\n    train_backbone = args.lr_backbone > 0\n    return_interm_layers = args.masks\n    backbone = Backbone(args.backbone, train_backbone, return_interm_layers, args.dilation)\n    model = Joiner(backbone, position_embedding)\n    model.num_channels = backbone.num_channels\n    return model",
+        "type": "code",
+        "location": "/detr/models/backbone.py:115-122"
+    },
+    "133": {
+        "file_id": 10,
+        "content": "This function builds a backbone model for a vision transformer. It takes arguments, creates position embedding, sets train and return flags, initializes the backbone, combines it with the position embedding, and returns the final model.",
+        "type": "comment"
+    },
+    "134": {
+        "file_id": 11,
+        "content": "/detr/models/detr_vae.py",
+        "type": "filepath"
+    },
+    "135": {
+        "file_id": 11,
+        "content": "This code defines a DETRVAE model for image object detection, using deep learning architecture and presents a CVAE-DETR model that generates latent inputs. The transformer-based model predicts actions and latent variables using PyTorch.",
+        "type": "summary"
+    },
+    "136": {
+        "file_id": 11,
+        "content": "# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved\n\"\"\"\nDETR model and criterion classes.\n\"\"\"\nimport torch\nfrom torch import nn\nfrom torch.autograd import Variable\nimport torch.nn.functional as F\nfrom .backbone import build_backbone\nfrom .transformer import build_transformer, TransformerEncoder, TransformerEncoderLayer\nimport numpy as np\nimport IPython\ne = IPython.embed\ndef reparametrize(mu, logvar):\n    std = logvar.div(2).exp()\n    eps = Variable(std.data.new(std.size()).normal_())\n    return mu + std * eps\ndef get_sinusoid_encoding_table(n_position, d_hid):\n    def get_position_angle_vec(position):\n        return [position / np.power(10000, 2 * (hid_j // 2) / d_hid) for hid_j in range(d_hid)]\n    sinusoid_table = np.array([get_position_angle_vec(pos_i) for pos_i in range(n_position)])\n    sinusoid_table[:, 0::2] = np.sin(sinusoid_table[:, 0::2])  # dim 2i\n    sinusoid_table[:, 1::2] = np.cos(sinusoid_table[:, 1::2])  # dim 2i+1\n    return torch.FloatTensor(sinusoid_table).unsqueeze(0)\nclass DETRVAE(nn.Module):",
+        "type": "code",
+        "location": "/detr/models/detr_vae.py:1-35"
+    },
+    "137": {
+        "file_id": 11,
+        "content": "This code defines the DETRVAE model and its associated functions. It uses modules like `torch`, `nn`, and `TransformerEncoder` to build a deep learning architecture for detecting objects in images. The `reparametrize` function is used for reparameterization trick, while `get_sinusoid_encoding_table` generates sinusoid encodings for positional encoding. The class `DETRVAE` is the main model implementation.",
+        "type": "comment"
+    },
+    "138": {
+        "file_id": 11,
+        "content": "    \"\"\" This is the DETR module that performs object detection \"\"\"\n    def __init__(self, backbones, transformer, encoder, state_dim, num_queries, camera_names, vq, vq_class, vq_dim, action_dim):\n        \"\"\" Initializes the model.\n        Parameters:\n            backbones: torch module of the backbone to be used. See backbone.py\n            transformer: torch module of the transformer architecture. See transformer.py\n            state_dim: robot state dimension of the environment\n            num_queries: number of object queries, ie detection slot. This is the maximal number of objects\n                         DETR can detect in a single image. For COCO, we recommend 100 queries.\n            aux_loss: True if auxiliary decoding losses (loss at each decoder layer) are to be used.\n        \"\"\"\n        super().__init__()\n        self.num_queries = num_queries\n        self.camera_names = camera_names\n        self.transformer = transformer\n        self.encoder = encoder\n        self.vq, self.vq_class, self.vq_dim = vq, vq_class, vq_dim",
+        "type": "code",
+        "location": "/detr/models/detr_vae.py:36-52"
+    },
+    "139": {
+        "file_id": 11,
+        "content": "The code defines a class called `DETR` for object detection. It takes in backbone, transformer, encoder, state_dim, num_queries, camera_names, vq, vq_class, and vq_dim as parameters to initialize the model. The `num_queries` represents the maximal number of objects that DETR can detect in a single image, and auxiliary decoding losses are optional.",
+        "type": "comment"
+    },
+    "140": {
+        "file_id": 11,
+        "content": "        self.state_dim, self.action_dim = state_dim, action_dim\n        hidden_dim = transformer.d_model\n        self.action_head = nn.Linear(hidden_dim, action_dim)\n        self.is_pad_head = nn.Linear(hidden_dim, 1)\n        self.query_embed = nn.Embedding(num_queries, hidden_dim)\n        if backbones is not None:\n            self.input_proj = nn.Conv2d(backbones[0].num_channels, hidden_dim, kernel_size=1)\n            self.backbones = nn.ModuleList(backbones)\n            self.input_proj_robot_state = nn.Linear(state_dim, hidden_dim)\n        else:\n            # input_dim = 14 + 7 # robot_state + env_state\n            self.input_proj_robot_state = nn.Linear(state_dim, hidden_dim)\n            self.input_proj_env_state = nn.Linear(7, hidden_dim)\n            self.pos = torch.nn.Embedding(2, hidden_dim)\n            self.backbones = None\n        # encoder extra parameters\n        self.latent_dim = 32 # final size of latent z # TODO tune\n        self.cls_embed = nn.Embedding(1, hidden_dim) # extra cls token embedding",
+        "type": "code",
+        "location": "/detr/models/detr_vae.py:53-71"
+    },
+    "141": {
+        "file_id": 11,
+        "content": "The code initializes the DETR-VAE model by setting state and action dimensions, defining linear layers for action and pad heads, an embedding layer for queries, and additional layers based on whether backbones are provided or not. If no backbones are provided, it adds separate layers for robot state and environment state projections, a position embedding, and sets the backbones to None. It also sets the latent dimension of the latent z variable to 32 (to be tuned) and adds an extra cls token embedding.",
+        "type": "comment"
+    },
+    "142": {
+        "file_id": 11,
+        "content": "        self.encoder_action_proj = nn.Linear(action_dim, hidden_dim) # project action to embedding\n        self.encoder_joint_proj = nn.Linear(state_dim, hidden_dim)  # project qpos to embedding\n        print(f'Use VQ: {self.vq}, {self.vq_class}, {self.vq_dim}')\n        if self.vq:\n            self.latent_proj = nn.Linear(hidden_dim, self.vq_class * self.vq_dim)\n        else:\n            self.latent_proj = nn.Linear(hidden_dim, self.latent_dim*2) # project hidden state to latent std, var\n        self.register_buffer('pos_table', get_sinusoid_encoding_table(1+1+num_queries, hidden_dim)) # [CLS], qpos, a_seq\n        # decoder extra parameters\n        if self.vq:\n            self.latent_out_proj = nn.Linear(self.vq_class * self.vq_dim, hidden_dim)\n        else:\n            self.latent_out_proj = nn.Linear(self.latent_dim, hidden_dim) # project latent sample to embedding\n        self.additional_pos_embed = nn.Embedding(2, hidden_dim) # learned position embedding for proprio and latent\n    def encode(self, qpos, actions=None, is_pad=None, vq_sample=None):",
+        "type": "code",
+        "location": "/detr/models/detr_vae.py:72-90"
+    },
+    "143": {
+        "file_id": 11,
+        "content": "The code initializes the layers for a variational autoencoder (VAE) in DETR model. It includes linear layers to project actions and qpos to embedding, VQ-VAE specific latent projection, and decoder parameters such as latent out projection and learned position embeddings for proprio and latent. The encode function takes qpos, actions, is_pad, and vq_sample as inputs.",
+        "type": "comment"
+    },
+    "144": {
+        "file_id": 11,
+        "content": "        bs, _ = qpos.shape\n        if self.encoder is None:\n            latent_sample = torch.zeros([bs, self.latent_dim], dtype=torch.float32).to(qpos.device)\n            latent_input = self.latent_out_proj(latent_sample)\n            probs = binaries = mu = logvar = None\n        else:\n            # cvae encoder\n            is_training = actions is not None # train or val\n            ### Obtain latent z from action sequence\n            if is_training:\n                # project action sequence to embedding dim, and concat with a CLS token\n                action_embed = self.encoder_action_proj(actions) # (bs, seq, hidden_dim)\n                qpos_embed = self.encoder_joint_proj(qpos)  # (bs, hidden_dim)\n                qpos_embed = torch.unsqueeze(qpos_embed, axis=1)  # (bs, 1, hidden_dim)\n                cls_embed = self.cls_embed.weight # (1, hidden_dim)\n                cls_embed = torch.unsqueeze(cls_embed, axis=0).repeat(bs, 1, 1) # (bs, 1, hidden_dim)\n                encoder_input = torch.cat([cls_embed, qpos_embed, action_embed], axis=1) # (bs, seq+1, hidden_dim)",
+        "type": "code",
+        "location": "/detr/models/detr_vae.py:91-107"
+    },
+    "145": {
+        "file_id": 11,
+        "content": "This code is part of a CVAE (Conditional Variational Autoencoder) model. It obtains the latent variable z from an action sequence and a query position during training. The encoder projects the action sequence to an embedding dimension and concatenates it with a query position embedding and a fixed CLs token embedding. These inputs are then passed to the encoder to get the latent representation.",
+        "type": "comment"
+    },
+    "146": {
+        "file_id": 11,
+        "content": "                encoder_input = encoder_input.permute(1, 0, 2) # (seq+1, bs, hidden_dim)\n                # do not mask cls token\n                cls_joint_is_pad = torch.full((bs, 2), False).to(qpos.device) # False: not a padding\n                is_pad = torch.cat([cls_joint_is_pad, is_pad], axis=1)  # (bs, seq+1)\n                # obtain position embedding\n                pos_embed = self.pos_table.clone().detach()\n                pos_embed = pos_embed.permute(1, 0, 2)  # (seq+1, 1, hidden_dim)\n                # query model\n                encoder_output = self.encoder(encoder_input, pos=pos_embed, src_key_padding_mask=is_pad)\n                encoder_output = encoder_output[0] # take cls output only\n                latent_info = self.latent_proj(encoder_output)\n                if self.vq:\n                    logits = latent_info.reshape([*latent_info.shape[:-1], self.vq_class, self.vq_dim])\n                    probs = torch.softmax(logits, dim=-1)\n                    binaries = F.one_hot(torch.mult",
+        "type": "code",
+        "location": "/detr/models/detr_vae.py:108-123"
+    },
+    "147": {
+        "file_id": 11,
+        "content": "This code snippet is part of a DETR model, specifically the VAE (Variational Autoencoder) implementation. Here, it prepares the input for the encoder and then passes it through the encoder to obtain an encoded representation (latent_info). This encoding is used for the VQ-VAE loss (if enabled), where a one-hot binary encoding of the latents is used to learn a codebook.",
+        "type": "comment"
+    },
+    "148": {
+        "file_id": 11,
+        "content": "inomial(probs.view(-1, self.vq_dim), 1).squeeze(-1), self.vq_dim).view(-1, self.vq_class, self.vq_dim).float()\n                    binaries_flat = binaries.view(-1, self.vq_class * self.vq_dim)\n                    probs_flat = probs.view(-1, self.vq_class * self.vq_dim)\n                    straigt_through = binaries_flat - probs_flat.detach() + probs_flat\n                    latent_input = self.latent_out_proj(straigt_through)\n                    mu = logvar = None\n                else:\n                    probs = binaries = None\n                    mu = latent_info[:, :self.latent_dim]\n                    logvar = latent_info[:, self.latent_dim:]\n                    latent_sample = reparametrize(mu, logvar)\n                    latent_input = self.latent_out_proj(latent_sample)\n            else:\n                mu = logvar = binaries = probs = None\n                if self.vq:\n                    latent_input = self.latent_out_proj(vq_sample.view(-1, self.vq_class * self.vq_dim))\n                else:\n ",
+        "type": "code",
+        "location": "/detr/models/detr_vae.py:123-141"
+    },
+    "149": {
+        "file_id": 11,
+        "content": "This code is for a Variational Autoencoder (VAE) model, specifically the DETR-VAE. It calculates the latent input based on whether or not the model is in VQ-VAE mode. If it is, it computes binaries and probs, subtracts them, passes through the latent projection layer, and assigns them to mu and logvar as None. If not, it uses either the provided vq_sample (if available) or calculates the latent input using the latent projection layer if VQ mode is disabled.",
+        "type": "comment"
+    },
+    "150": {
+        "file_id": 11,
+        "content": "                   latent_sample = torch.zeros([bs, self.latent_dim], dtype=torch.float32).to(qpos.device)\n                    latent_input = self.latent_out_proj(latent_sample)\n        return latent_input, probs, binaries, mu, logvar\n    def forward(self, qpos, image, env_state, actions=None, is_pad=None, vq_sample=None):\n        \"\"\"\n        qpos: batch, qpos_dim\n        image: batch, num_cam, channel, height, width\n        env_state: None\n        actions: batch, seq, action_dim\n        \"\"\"\n        latent_input, probs, binaries, mu, logvar = self.encode(qpos, actions, is_pad, vq_sample)\n        # cvae decoder\n        if self.backbones is not None:\n            # Image observation features and position embeddings\n            all_cam_features = []\n            all_cam_pos = []\n            for cam_id, cam_name in enumerate(self.camera_names):\n                features, pos = self.backbones[cam_id](image[:, cam_id])\n                features = features[0] # take the last layer feature\n                pos = pos[0]",
+        "type": "code",
+        "location": "/detr/models/detr_vae.py:141-163"
+    },
+    "151": {
+        "file_id": 11,
+        "content": "This code snippet defines a method for creating latent samples, initializing variables, and performing encoding using a VAE (Variational AutoEncoder). The forward function takes in inputs like qpos, image, env_state, actions, is_pad, and vq_sample. It encodes the input using the encode method and then applies the CVAE decoder if backbones are provided.",
+        "type": "comment"
+    },
+    "152": {
+        "file_id": 11,
+        "content": "                all_cam_features.append(self.input_proj(features))\n                all_cam_pos.append(pos)\n            # proprioception features\n            proprio_input = self.input_proj_robot_state(qpos)\n            # fold camera dimension into width dimension\n            src = torch.cat(all_cam_features, axis=3)\n            pos = torch.cat(all_cam_pos, axis=3)\n            hs = self.transformer(src, None, self.query_embed.weight, pos, latent_input, proprio_input, self.additional_pos_embed.weight)[0]\n        else:\n            qpos = self.input_proj_robot_state(qpos)\n            env_state = self.input_proj_env_state(env_state)\n            transformer_input = torch.cat([qpos, env_state], axis=1) # seq length = 2\n            hs = self.transformer(transformer_input, None, self.query_embed.weight, self.pos.weight)[0]\n        a_hat = self.action_head(hs)\n        is_pad_hat = self.is_pad_head(hs)\n        return a_hat, is_pad_hat, [mu, logvar], probs, binaries\nclass CNNMLP(nn.Module):\n    def __init__(self, backbones, state_dim, camera_names):",
+        "type": "code",
+        "location": "/detr/models/detr_vae.py:164-184"
+    },
+    "153": {
+        "file_id": 11,
+        "content": "This code defines a model for predicting actions and latent variables. It includes a transformer network, action head, and is pad head. The input includes camera features, proprioception features, robot state, and environment state. The model handles both scenarios with or without cameras. The CNNMLP class initializes the model using backbones, state_dim, and camera names.",
+        "type": "comment"
+    },
+    "154": {
+        "file_id": 11,
+        "content": "        \"\"\" Initializes the model.\n        Parameters:\n            backbones: torch module of the backbone to be used. See backbone.py\n            transformer: torch module of the transformer architecture. See transformer.py\n            state_dim: robot state dimension of the environment\n            num_queries: number of object queries, ie detection slot. This is the maximal number of objects\n                         DETR can detect in a single image. For COCO, we recommend 100 queries.\n            aux_loss: True if auxiliary decoding losses (loss at each decoder layer) are to be used.\n        \"\"\"\n        super().__init__()\n        self.camera_names = camera_names\n        self.action_head = nn.Linear(1000, state_dim) # TODO add more\n        if backbones is not None:\n            self.backbones = nn.ModuleList(backbones)\n            backbone_down_projs = []\n            for backbone in backbones:\n                down_proj = nn.Sequential(\n                    nn.Conv2d(backbone.num_channels, 128, kernel_size=5),",
+        "type": "code",
+        "location": "/detr/models/detr_vae.py:185-202"
+    },
+    "155": {
+        "file_id": 11,
+        "content": "This code initializes the model and takes parameters for backbones, transformer, state_dim, num_queries, and aux_loss. It creates an action head using a linear layer with 1000 input size and state_dim output size. If backbones are provided, it creates a ModuleList of backbones and initializes down_proj for each backbone using conv2d with specified parameters.",
+        "type": "comment"
+    },
+    "156": {
+        "file_id": 11,
+        "content": "                    nn.Conv2d(128, 64, kernel_size=5),\n                    nn.Conv2d(64, 32, kernel_size=5)\n                )\n                backbone_down_projs.append(down_proj)\n            self.backbone_down_projs = nn.ModuleList(backbone_down_projs)\n            mlp_in_dim = 768 * len(backbones) + state_dim\n            self.mlp = mlp(input_dim=mlp_in_dim, hidden_dim=1024, output_dim=self.action_dim, hidden_depth=2)\n        else:\n            raise NotImplementedError\n    def forward(self, qpos, image, env_state, actions=None):\n        \"\"\"\n        qpos: batch, qpos_dim\n        image: batch, num_cam, channel, height, width\n        env_state: None\n        actions: batch, seq, action_dim\n        \"\"\"\n        is_training = actions is not None # train or val\n        bs, _ = qpos.shape\n        # Image observation features and position embeddings\n        all_cam_features = []\n        for cam_id, cam_name in enumerate(self.camera_names):\n            features, pos = self.backbones[cam_id](image[:, cam_id])\n            features = features[0] # take the last layer feature",
+        "type": "code",
+        "location": "/detr/models/detr_vae.py:203-227"
+    },
+    "157": {
+        "file_id": 11,
+        "content": "This code is for a DETR model in PyTorch. It defines the architecture and forward pass. The backbone network consists of two convolutions to downsample the input, followed by a mlp layer if needed. The forward method takes in qpos, image, env_state (None in this case), and optionally actions for training or validation. It extracts image features from each camera view using backbones, concatenates them, and performs positional encoding.",
+        "type": "comment"
+    },
+    "158": {
+        "file_id": 11,
+        "content": "            pos = pos[0] # not used\n            all_cam_features.append(self.backbone_down_projs[cam_id](features))\n        # flatten everything\n        flattened_features = []\n        for cam_feature in all_cam_features:\n            flattened_features.append(cam_feature.reshape([bs, -1]))\n        flattened_features = torch.cat(flattened_features, axis=1) # 768 each\n        features = torch.cat([flattened_features, qpos], axis=1) # qpos: 14\n        a_hat = self.mlp(features)\n        return a_hat\ndef mlp(input_dim, hidden_dim, output_dim, hidden_depth):\n    if hidden_depth == 0:\n        mods = [nn.Linear(input_dim, output_dim)]\n    else:\n        mods = [nn.Linear(input_dim, hidden_dim), nn.ReLU(inplace=True)]\n        for i in range(hidden_depth - 1):\n            mods += [nn.Linear(hidden_dim, hidden_dim), nn.ReLU(inplace=True)]\n        mods.append(nn.Linear(hidden_dim, output_dim))\n    trunk = nn.Sequential(*mods)\n    return trunk\ndef build_encoder(args):\n    d_model = args.hidden_dim # 256\n    dropout = args.dropout # 0.1",
+        "type": "code",
+        "location": "/detr/models/detr_vae.py:228-254"
+    },
+    "159": {
+        "file_id": 11,
+        "content": "This code defines a DETR VAE model, including functions for building the encoder and creating an MLP. The encoder takes input features and positions (qpos) to create a flattened feature matrix, which is then passed through an MLP to produce the final output (a_hat).",
+        "type": "comment"
+    },
+    "160": {
+        "file_id": 11,
+        "content": "    nhead = args.nheads # 8\n    dim_feedforward = args.dim_feedforward # 2048\n    num_encoder_layers = args.enc_layers # 4 # TODO shared with VAE decoder\n    normalize_before = args.pre_norm # False\n    activation = \"relu\"\n    encoder_layer = TransformerEncoderLayer(d_model, nhead, dim_feedforward,\n                                            dropout, activation, normalize_before)\n    encoder_norm = nn.LayerNorm(d_model) if normalize_before else None\n    encoder = TransformerEncoder(encoder_layer, num_encoder_layers, encoder_norm)\n    return encoder\ndef build(args):\n    state_dim = 14 # TODO hardcode\n    # From state\n    # backbone = None # from state for now, no need for conv nets\n    # From image\n    backbones = []\n    for _ in args.camera_names:\n        backbone = build_backbone(args)\n        backbones.append(backbone)\n    transformer = build_transformer(args)\n    if args.no_encoder:\n        encoder = None\n    else:\n        encoder = build_transformer(args)\n    model = DETRVAE(\n        backbones,\n        transformer,",
+        "type": "code",
+        "location": "/detr/models/detr_vae.py:255-289"
+    },
+    "161": {
+        "file_id": 11,
+        "content": "This code builds a DETRVAE model by defining its components and parameters. It initializes the transformer encoder, decoder, and VAE components based on provided arguments. The backbone for image processing is built using a function call to build_backbone(args). If no encoder is required, it sets the encoder as None.",
+        "type": "comment"
+    },
+    "162": {
+        "file_id": 11,
+        "content": "        encoder,\n        state_dim=state_dim,\n        num_queries=args.num_queries,\n        camera_names=args.camera_names,\n        vq=args.vq,\n        vq_class=args.vq_class,\n        vq_dim=args.vq_dim,\n        action_dim=args.action_dim,\n    )\n    n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)\n    print(\"number of parameters: %.2fM\" % (n_parameters/1e6,))\n    return model\ndef build_cnnmlp(args):\n    state_dim = 14 # TODO hardcode\n    # From state\n    # backbone = None # from state for now, no need for conv nets\n    # From image\n    backbones = []\n    for _ in args.camera_names:\n        backbone = build_backbone(args)\n        backbones.append(backbone)\n    model = CNNMLP(\n        backbones,\n        state_dim=state_dim,\n        camera_names=args.camera_names,\n    )\n    n_parameters = sum(p.numel() for p in model.parameters() if p.requires_grad)\n    print(\"number of parameters: %.2fM\" % (n_parameters/1e6,))\n    return model",
+        "type": "code",
+        "location": "/detr/models/detr_vae.py:290-325"
+    },
+    "163": {
+        "file_id": 11,
+        "content": "This code defines two functions, `detr_vae` and `build_cnnmlp`, which build different models. Both functions return a model object after printing the number of parameters it has. The `detr_vae` function requires additional arguments like `state_dim`, `num_queries`, `camera_names`, `vq`, `vq_class`, and `action_dim`. The `build_cnnmlp` function requires an `args` argument, which it uses to create a CNNMLP model by building backbones for each camera name provided in the arguments.",
+        "type": "comment"
+    },
+    "164": {
+        "file_id": 12,
+        "content": "/detr/models/latent_model.py",
+        "type": "filepath"
+    },
+    "165": {
+        "file_id": 12,
+        "content": "Latent_Model_Transformer extends nn.Module, uses self-attention for latent space sequence modeling, has configurable input/output dimensions and sequence length, defaulting to 256 latent dimension, 8 heads, and 3 layers. The class has 'forward' and 'generate' methods for generating new samples by iteratively sampling from the output of the forward pass using temperature-scaled softmax and one-hot encoding.",
+        "type": "summary"
+    },
+    "166": {
+        "file_id": 12,
+        "content": "import torch.nn as nn\nfrom torch.nn import functional as F\nimport torch\nDROPOUT_RATE = 0.1\n# a causal transformer block\nclass Causal_Transformer_Block(nn.Module):\n    def __init__(self, seq_len, latent_dim, num_head) -> None:\n        super().__init__()\n        self.num_head = num_head\n        self.latent_dim = latent_dim\n        self.ln_1 = nn.LayerNorm(latent_dim)\n        self.attn = nn.MultiheadAttention(latent_dim, num_head, dropout=DROPOUT_RATE, batch_first=True)\n        self.ln_2 = nn.LayerNorm(latent_dim)\n        self.mlp = nn.Sequential(\n            nn.Linear(latent_dim, 4 * latent_dim),\n            nn.GELU(),\n            nn.Linear(4 * latent_dim, latent_dim),\n            nn.Dropout(DROPOUT_RATE),\n        )\n        # self.register_buffer(\"attn_mask\", torch.triu(torch.ones(seq_len, seq_len), diagonal=1).bool())\n    def forward(self, x):\n        attn_mask = torch.triu(torch.ones(x.shape[1], x.shape[1], device=x.device, dtype=torch.bool), diagonal=1)\n        x = self.ln_1(x)\n        x = x + self.attn(x, x, x, attn_mask=attn_mask)[0]",
+        "type": "code",
+        "location": "/detr/models/latent_model.py:1-28"
+    },
+    "167": {
+        "file_id": 12,
+        "content": "Causal Transformer block: LayerNormalization, MultiHeadAttention with dropout, and MLP sequential layers.",
+        "type": "comment"
+    },
+    "168": {
+        "file_id": 12,
+        "content": "        x = self.ln_2(x)\n        x = x + self.mlp(x)\n        return x\n# use self-attention instead of RNN to model the latent space sequence\nclass Latent_Model_Transformer(nn.Module):\n    def __init__(self, input_dim, output_dim, seq_len, latent_dim=256, num_head=8, num_layer=3) -> None:\n        super().__init__()\n        self.input_dim = input_dim\n        self.output_dim = output_dim\n        self.seq_len = seq_len\n        self.latent_dim = latent_dim\n        self.num_head = num_head\n        self.num_layer = num_layer\n        self.input_layer = nn.Linear(input_dim, latent_dim)\n        self.weight_pos_embed = nn.Embedding(seq_len, latent_dim)\n        self.attention_blocks = nn.Sequential(\n            nn.Dropout(DROPOUT_RATE),\n            *[Causal_Transformer_Block(seq_len, latent_dim, num_head) for _ in range(num_layer)],\n            nn.LayerNorm(latent_dim)\n        )\n        self.output_layer = nn.Linear(latent_dim, output_dim)\n    def forward(self, x):\n        x = self.input_layer(x)\n        x = x + self.weight_pos_embed(torch.arange(x.shape[1], device=x.device))",
+        "type": "code",
+        "location": "/detr/models/latent_model.py:29-55"
+    },
+    "169": {
+        "file_id": 12,
+        "content": "In \"act-plus-plus/detr/models/latent_model.py\", lines 28-54 define a class Latent_Model_Transformer that extends nn.Module. This model uses self-attention instead of RNN to model the latent space sequence. It takes an input dimension, output dimension, sequence length, latent dimension (default 256), number of heads (default 8), and number of layers (default 3). The forward method applies an input layer, adds positional embedding, passes through a series of causal transformer blocks, and finally outputs through an output layer.",
+        "type": "comment"
+    },
+    "170": {
+        "file_id": 12,
+        "content": "        x = self.attention_blocks(x)\n        logits = self.output_layer(x)\n        return logits\n    @torch.no_grad()\n    def generate(self, n, temperature=0.1, x=None):\n        if x is None:\n            x = torch.zeros((n, 1, self.input_dim), device=self.weight_pos_embed.weight.device)\n        for i in range(self.seq_len):\n            logits = self.forward(x)[:, -1]\n            probs = torch.softmax(logits / temperature, dim=-1)\n            samples = torch.multinomial(probs, num_samples=1)[..., 0]\n            samples_one_hot = F.one_hot(samples.long(), num_classes=self.output_dim).float()\n            x = torch.cat([x, samples_one_hot[:, None, :]], dim=1)\n        return x[:, 1:, :]",
+        "type": "code",
+        "location": "/detr/models/latent_model.py:56-72"
+    },
+    "171": {
+        "file_id": 12,
+        "content": "This code defines a class with two methods: 'forward' and 'generate'. The 'forward' method applies attention blocks to the input, then passes it through an output layer to produce logits. The 'generate' method generates new samples by iteratively sampling from the output of the forward pass using temperature-scaled softmax and one-hot encoding. The generated samples are appended to the original input and returned after trimming unnecessary rows.",
+        "type": "comment"
+    },
+    "172": {
+        "file_id": 13,
+        "content": "/detr/models/position_encoding.py",
+        "type": "filepath"
+    },
+    "173": {
+        "file_id": 13,
+        "content": "This code defines a transformer positional embedding class using sine and cosine encodings for position embeddings. The forward function applies these encodings to the input tensor 'x', normalizing cumulative sums before applying dimensional transformation. This learned absolute position embedding extends nn.Module and is used in transformer models.",
+        "type": "summary"
+    },
+    "174": {
+        "file_id": 13,
+        "content": "# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved\n\"\"\"\nVarious positional encodings for the transformer.\n\"\"\"\nimport math\nimport torch\nfrom torch import nn\nfrom util.misc import NestedTensor\nimport IPython\ne = IPython.embed\nclass PositionEmbeddingSine(nn.Module):\n    \"\"\"\n    This is a more standard version of the position embedding, very similar to the one\n    used by the Attention is all you need paper, generalized to work on images.\n    \"\"\"\n    def __init__(self, num_pos_feats=64, temperature=10000, normalize=False, scale=None):\n        super().__init__()\n        self.num_pos_feats = num_pos_feats\n        self.temperature = temperature\n        self.normalize = normalize\n        if scale is not None and normalize is False:\n            raise ValueError(\"normalize should be True if scale is passed\")\n        if scale is None:\n            scale = 2 * math.pi\n        self.scale = scale\n    def forward(self, tensor):\n        x = tensor\n        # mask = tensor_list.mask\n        # assert mask is not None",
+        "type": "code",
+        "location": "/detr/models/position_encoding.py:1-33"
+    },
+    "175": {
+        "file_id": 13,
+        "content": "This code defines a positional embedding class for transformers, similar to the one used in the Attention is All You Need paper. It takes in parameters such as num_pos_feats (number of position features), temperature, normalize (whether to normalize or not), and scale. The forward function applies sine and cosine positional encodings to tensor.",
+        "type": "comment"
+    },
+    "176": {
+        "file_id": 13,
+        "content": "        # not_mask = ~mask\n        not_mask = torch.ones_like(x[0, [0]])\n        y_embed = not_mask.cumsum(1, dtype=torch.float32)\n        x_embed = not_mask.cumsum(2, dtype=torch.float32)\n        if self.normalize:\n            eps = 1e-6\n            y_embed = y_embed / (y_embed[:, -1:, :] + eps) * self.scale\n            x_embed = x_embed / (x_embed[:, :, -1:] + eps) * self.scale\n        dim_t = torch.arange(self.num_pos_feats, dtype=torch.float32, device=x.device)\n        dim_t = self.temperature ** (2 * (dim_t // 2) / self.num_pos_feats)\n        pos_x = x_embed[:, :, :, None] / dim_t\n        pos_y = y_embed[:, :, :, None] / dim_t\n        pos_x = torch.stack((pos_x[:, :, :, 0::2].sin(), pos_x[:, :, :, 1::2].cos()), dim=4).flatten(3)\n        pos_y = torch.stack((pos_y[:, :, :, 0::2].sin(), pos_y[:, :, :, 1::2].cos()), dim=4).flatten(3)\n        pos = torch.cat((pos_y, pos_x), dim=3).permute(0, 3, 1, 2)\n        return pos\nclass PositionEmbeddingLearned(nn.Module):\n    \"\"\"\n    Absolute pos embedding, learned.",
+        "type": "code",
+        "location": "/detr/models/position_encoding.py:34-57"
+    },
+    "177": {
+        "file_id": 13,
+        "content": "This code generates position embeddings for a given input tensor 'x'. It first creates not_mask and computes the cumulative sums along rows and columns. Then, it normalizes these sums by dividing them with their respective last elements plus a small epsilon value and multiplies them by a scale factor. The code then calculates a temperature-based dimensional transformation for each element in 'x'. It further computes the sine and cosine of the transformed values, stacks them and flattens them along one dimension. Finally, it concatenates the y and x embeddings along the last dimension, permutes the dimensions, and returns the result. This class extends nn.Module and is used for creating learned absolute position embeddings.",
+        "type": "comment"
+    },
+    "178": {
+        "file_id": 13,
+        "content": "    \"\"\"\n    def __init__(self, num_pos_feats=256):\n        super().__init__()\n        self.row_embed = nn.Embedding(50, num_pos_feats)\n        self.col_embed = nn.Embedding(50, num_pos_feats)\n        self.reset_parameters()\n    def reset_parameters(self):\n        nn.init.uniform_(self.row_embed.weight)\n        nn.init.uniform_(self.col_embed.weight)\n    def forward(self, tensor_list: NestedTensor):\n        x = tensor_list.tensors\n        h, w = x.shape[-2:]\n        i = torch.arange(w, device=x.device)\n        j = torch.arange(h, device=x.device)\n        x_emb = self.col_embed(i)\n        y_emb = self.row_embed(j)\n        pos = torch.cat([\n            x_emb.unsqueeze(0).repeat(h, 1, 1),\n            y_emb.unsqueeze(1).repeat(1, w, 1),\n        ], dim=-1).permute(2, 0, 1).unsqueeze(0).repeat(x.shape[0], 1, 1, 1)\n        return pos\ndef build_position_encoding(args):\n    N_steps = args.hidden_dim // 2\n    if args.position_embedding in ('v2', 'sine'):\n        # TODO find a better way of exposing other arguments\n        position_embedding = PositionEmbeddingSine(N_steps, normalize=True)",
+        "type": "code",
+        "location": "/detr/models/position_encoding.py:58-87"
+    },
+    "179": {
+        "file_id": 13,
+        "content": "This code defines a class \"PositionEmbeddingSine\" for creating position encoding using sine and cosine functions. It takes the number of positional features as input and initializes two embedding layers, one for rows and another for columns. The \"forward\" method computes position embeddings by applying row and column embeddings to image indices and returns them. The \"build_position_encoding\" function creates an instance of PositionEmbeddingSine based on the given arguments.",
+        "type": "comment"
+    },
+    "180": {
+        "file_id": 13,
+        "content": "    elif args.position_embedding in ('v3', 'learned'):\n        position_embedding = PositionEmbeddingLearned(N_steps)\n    else:\n        raise ValueError(f\"not supported {args.position_embedding}\")\n    return position_embedding",
+        "type": "code",
+        "location": "/detr/models/position_encoding.py:88-93"
+    },
+    "181": {
+        "file_id": 13,
+        "content": "This code snippet checks the value of 'args.position_embedding' and if it is set to either 'v3' or 'learned', it creates a PositionEmbeddingLearned object. If the input is neither of these, it raises a ValueError with an error message. Finally, it returns the created position embedding object.",
+        "type": "comment"
+    },
+    "182": {
+        "file_id": 14,
+        "content": "/detr/models/transformer.py",
+        "type": "filepath"
+    },
+    "183": {
+        "file_id": 14,
+        "content": "The code defines a Transformer class in PyTorch for data processing, featuring encoder and decoder modules, positional embeddings, transformer layers, and optional masks and position embeddings.",
+        "type": "summary"
+    },
+    "184": {
+        "file_id": 14,
+        "content": "# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved\n\"\"\"\nDETR Transformer class.\nCopy-paste from torch.nn.Transformer with modifications:\n    * positional encodings are passed in MHattention\n    * extra LN at the end of encoder is removed\n    * decoder returns a stack of activations from all decoding layers\n\"\"\"\nimport copy\nfrom typing import Optional, List\nimport torch\nimport torch.nn.functional as F\nfrom torch import nn, Tensor\nimport IPython\ne = IPython.embed\nclass Transformer(nn.Module):\n    def __init__(self, d_model=512, nhead=8, num_encoder_layers=6,\n                 num_decoder_layers=6, dim_feedforward=2048, dropout=0.1,\n                 activation=\"relu\", normalize_before=False,\n                 return_intermediate_dec=False):\n        super().__init__()\n        encoder_layer = TransformerEncoderLayer(d_model, nhead, dim_feedforward,\n                                                dropout, activation, normalize_before)\n        encoder_norm = nn.LayerNorm(d_model) if normalize_before else None",
+        "type": "code",
+        "location": "/detr/models/transformer.py:1-30"
+    },
+    "185": {
+        "file_id": 14,
+        "content": "This code defines the Transformer class from scratch with minor modifications to the original implementation, including passing positional encodings in MHAttention, removing an extra LN layer in the encoder, and allowing for intermediate decoder activations to be returned. It inherits from nn.Module and has several parameters for customization.",
+        "type": "comment"
+    },
+    "186": {
+        "file_id": 14,
+        "content": "        self.encoder = TransformerEncoder(encoder_layer, num_encoder_layers, encoder_norm)\n        decoder_layer = TransformerDecoderLayer(d_model, nhead, dim_feedforward,\n                                                dropout, activation, normalize_before)\n        decoder_norm = nn.LayerNorm(d_model)\n        self.decoder = TransformerDecoder(decoder_layer, num_decoder_layers, decoder_norm,\n                                          return_intermediate=return_intermediate_dec)\n        self._reset_parameters()\n        self.d_model = d_model\n        self.nhead = nhead\n    def _reset_parameters(self):\n        for p in self.parameters():\n            if p.dim() > 1:\n                nn.init.xavier_uniform_(p)\n    def forward(self, src, mask, query_embed, pos_embed, latent_input=None, proprio_input=None, additional_pos_embed=None):\n        # TODO flatten only when input has H and W\n        if len(src.shape) == 4: # has H and W\n            # flatten NxCxHxW to HWxNxC\n            bs, c, h, w = src.shape\n            src = src.flatten(2).permute(2, 0, 1)",
+        "type": "code",
+        "location": "/detr/models/transformer.py:31-54"
+    },
+    "187": {
+        "file_id": 14,
+        "content": "This code initializes a Transformer model with an encoder and decoder, performing parameter initialization and normalization. It also includes a forward method for processing input data with possible flattening for images.",
+        "type": "comment"
+    },
+    "188": {
+        "file_id": 14,
+        "content": "            pos_embed = pos_embed.flatten(2).permute(2, 0, 1).repeat(1, bs, 1)\n            query_embed = query_embed.unsqueeze(1).repeat(1, bs, 1)\n            # mask = mask.flatten(1)\n            additional_pos_embed = additional_pos_embed.unsqueeze(1).repeat(1, bs, 1) # seq, bs, dim\n            pos_embed = torch.cat([additional_pos_embed, pos_embed], axis=0)\n            addition_input = torch.stack([latent_input, proprio_input], axis=0)\n            src = torch.cat([addition_input, src], axis=0)\n        else:\n            assert len(src.shape) == 3\n            # flatten NxHWxC to HWxNxC\n            bs, hw, c = src.shape\n            src = src.permute(1, 0, 2)\n            pos_embed = pos_embed.unsqueeze(1).repeat(1, bs, 1)\n            query_embed = query_embed.unsqueeze(1).repeat(1, bs, 1)\n        tgt = torch.zeros_like(query_embed)\n        memory = self.encoder(src, src_key_padding_mask=mask, pos=pos_embed)\n        hs = self.decoder(tgt, memory, memory_key_padding_mask=mask,\n                          pos=pos_embed, query_pos=query_embed)",
+        "type": "code",
+        "location": "/detr/models/transformer.py:55-75"
+    },
+    "189": {
+        "file_id": 14,
+        "content": "The code initializes the transformer model by handling different source (src) input shapes. It either flattens and repeats the inputs if the shape is bs, hw, c or simply permutes and repeats if the shape is NxHWxC. Positional embeddings are calculated for both position and additional positional information. The decoder uses these embeddings to process target (tgt) and source memory.",
+        "type": "comment"
+    },
+    "190": {
+        "file_id": 14,
+        "content": "        hs = hs.transpose(1, 2)\n        return hs\nclass TransformerEncoder(nn.Module):\n    def __init__(self, encoder_layer, num_layers, norm=None):\n        super().__init__()\n        self.layers = _get_clones(encoder_layer, num_layers)\n        self.num_layers = num_layers\n        self.norm = norm\n    def forward(self, src,\n                mask: Optional[Tensor] = None,\n                src_key_padding_mask: Optional[Tensor] = None,\n                pos: Optional[Tensor] = None):\n        output = src\n        for layer in self.layers:\n            output = layer(output, src_mask=mask,\n                           src_key_padding_mask=src_key_padding_mask, pos=pos)\n        if self.norm is not None:\n            output = self.norm(output)\n        return output\nclass TransformerDecoder(nn.Module):\n    def __init__(self, decoder_layer, num_layers, norm=None, return_intermediate=False):\n        super().__init__()\n        self.layers = _get_clones(decoder_layer, num_layers)\n        self.num_layers = num_layers\n        self.norm = norm",
+        "type": "code",
+        "location": "/detr/models/transformer.py:76-109"
+    },
+    "191": {
+        "file_id": 14,
+        "content": "This code defines two classes: TransformerEncoder and TransformerDecoder. The TransformerEncoder class initializes an encoder with a specified number of layers and normalization method, then forwards input through each layer in the encoder. The TransformerDecoder class initializes a decoder with a specified number of layers and normalization method, then forwards input through each layer in the decoder. Both classes can handle optional masks and positions during forward propagation.",
+        "type": "comment"
+    },
+    "192": {
+        "file_id": 14,
+        "content": "        self.return_intermediate = return_intermediate\n    def forward(self, tgt, memory,\n                tgt_mask: Optional[Tensor] = None,\n                memory_mask: Optional[Tensor] = None,\n                tgt_key_padding_mask: Optional[Tensor] = None,\n                memory_key_padding_mask: Optional[Tensor] = None,\n                pos: Optional[Tensor] = None,\n                query_pos: Optional[Tensor] = None):\n        output = tgt\n        intermediate = []\n        for layer in self.layers:\n            output = layer(output, memory, tgt_mask=tgt_mask,\n                           memory_mask=memory_mask,\n                           tgt_key_padding_mask=tgt_key_padding_mask,\n                           memory_key_padding_mask=memory_key_padding_mask,\n                           pos=pos, query_pos=query_pos)\n            if self.return_intermediate:\n                intermediate.append(self.norm(output))\n        if self.norm is not None:\n            output = self.norm(output)\n            if self.return_intermediate:",
+        "type": "code",
+        "location": "/detr/models/transformer.py:110-134"
+    },
+    "193": {
+        "file_id": 14,
+        "content": "The code defines a Transformer model's forward pass, where each layer applies its operations iteratively on the target (tgt) and memory inputs. The intermediate results are stored if return_intermediate is set to True. Finally, the norm layer normalizes the output, and if return_intermediate is set, stores the normalized outputs as intermediates.",
+        "type": "comment"
+    },
+    "194": {
+        "file_id": 14,
+        "content": "                intermediate.pop()\n                intermediate.append(output)\n        if self.return_intermediate:\n            return torch.stack(intermediate)\n        return output.unsqueeze(0)\nclass TransformerEncoderLayer(nn.Module):\n    def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1,\n                 activation=\"relu\", normalize_before=False):\n        super().__init__()\n        self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)\n        # Implementation of Feedforward model\n        self.linear1 = nn.Linear(d_model, dim_feedforward)\n        self.dropout = nn.Dropout(dropout)\n        self.linear2 = nn.Linear(dim_feedforward, d_model)\n        self.norm1 = nn.LayerNorm(d_model)\n        self.norm2 = nn.LayerNorm(d_model)\n        self.dropout1 = nn.Dropout(dropout)\n        self.dropout2 = nn.Dropout(dropout)\n        self.activation = _get_activation_fn(activation)\n        self.normalize_before = normalize_before\n    def with_pos_embed(self, tensor, pos: Optional[Tensor]):",
+        "type": "code",
+        "location": "/detr/models/transformer.py:135-163"
+    },
+    "195": {
+        "file_id": 14,
+        "content": "This code defines a class called \"TransformerEncoderLayer\" which implements a layer for the transformer encoder in the Transformer model. It consists of a self-attention mechanism, followed by a feedforward network and normalization layers. The \"return_intermediate\" parameter controls whether intermediate results are returned or not.",
+        "type": "comment"
+    },
+    "196": {
+        "file_id": 14,
+        "content": "        return tensor if pos is None else tensor + pos\n    def forward_post(self,\n                     src,\n                     src_mask: Optional[Tensor] = None,\n                     src_key_padding_mask: Optional[Tensor] = None,\n                     pos: Optional[Tensor] = None):\n        q = k = self.with_pos_embed(src, pos)\n        src2 = self.self_attn(q, k, value=src, attn_mask=src_mask,\n                              key_padding_mask=src_key_padding_mask)[0]\n        src = src + self.dropout1(src2)\n        src = self.norm1(src)\n        src2 = self.linear2(self.dropout(self.activation(self.linear1(src))))\n        src = src + self.dropout2(src2)\n        src = self.norm2(src)\n        return src\n    def forward_pre(self, src,\n                    src_mask: Optional[Tensor] = None,\n                    src_key_padding_mask: Optional[Tensor] = None,\n                    pos: Optional[Tensor] = None):\n        src2 = self.norm1(src)\n        q = k = self.with_pos_embed(src2, pos)\n        src2 = self.self_attn(q, k, value=src2, attn_mask=src_mask,",
+        "type": "code",
+        "location": "/detr/models/transformer.py:164-187"
+    },
+    "197": {
+        "file_id": 14,
+        "content": "This code defines three functions: `forward_post`, `forward_pre`, and a helper function that calculates the tensor based on positional embeddings. The `forward_post` function applies self-attention to the input source, adds it back to the original source, and performs two feed-forward layers with residual connections and layer normalization for each of them. The `forward_pre` function applies layer normalization to the input source, calculates self-attention based on positional embeddings, and performs two feed-forward layers similar to `forward_post`. The code seems to be part of a transformer model in natural language processing or computer vision tasks that incorporate position information.",
+        "type": "comment"
+    },
+    "198": {
+        "file_id": 14,
+        "content": "                              key_padding_mask=src_key_padding_mask)[0]\n        src = src + self.dropout1(src2)\n        src2 = self.norm2(src)\n        src2 = self.linear2(self.dropout(self.activation(self.linear1(src2))))\n        src = src + self.dropout2(src2)\n        return src\n    def forward(self, src,\n                src_mask: Optional[Tensor] = None,\n                src_key_padding_mask: Optional[Tensor] = None,\n                pos: Optional[Tensor] = None):\n        if self.normalize_before:\n            return self.forward_pre(src, src_mask, src_key_padding_mask, pos)\n        return self.forward_post(src, src_mask, src_key_padding_mask, pos)\nclass TransformerDecoderLayer(nn.Module):\n    def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1,\n                 activation=\"relu\", normalize_before=False):\n        super().__init__()\n        self.self_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)\n        self.multihead_attn = nn.MultiheadAttention(d_model, nhead, dropout=dropout)",
+        "type": "code",
+        "location": "/detr/models/transformer.py:188-210"
+    },
+    "199": {
+        "file_id": 14,
+        "content": "This code defines a TransformerDecoderLayer class that inherits from nn.Module and takes in parameters such as d_model, nhead, dim_feedforward, dropout, activation, and normalize_before. The class has methods for forward pass and initializing the layer. It also includes an instance of MultiheadAttention for self attention and multi-headed attention.",
+        "type": "comment"
+    }
+}

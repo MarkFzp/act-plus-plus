@@ -1,0 +1,544 @@
+{
+    "0": {
+        "file_id": 0,
+        "content": "/README.md",
+        "type": "filepath"
+    },
+    "1": {
+        "file_id": 0,
+        "content": "This code includes ACT, Diffusion Policy, and VINN implementations with two simulated environments, installation instructions for dependencies and environment, demo scripts, data generation and visualization guides, training tips, and expected success rate evaluation.",
+        "type": "summary"
+    },
+    "2": {
+        "file_id": 0,
+        "content": "# Imitation Learning algorithms and Co-training for Mobile ALOHA\n#### Project Website: https://mobile-aloha.github.io/\nThis repo contains the implementation of ACT, Diffusion Policy and VINN, together with 2 simulated environments:\nTransfer Cube and Bimanual Insertion. You can train and evaluate them in sim or real.\nFor real, you would also need to install [Mobile ALOHA](https://github.com/MarkFzp/mobile-aloha). This repo is forked from the [ACT repo](https://github.com/tonyzhaozh/act).\n### Updates:\nYou can find all scripted/human demo for simulated environments [here](https://drive.google.com/drive/folders/1gPR03v05S1xiInoVJn7G7VJ9pDCnxq9O?usp=share_link).\n### Repo Structure\n- ``imitate_episodes.py`` Train and Evaluate ACT\n- ``policy.py`` An adaptor for ACT policy\n- ``detr`` Model definitions of ACT, modified from DETR\n- ``sim_env.py`` Mujoco + DM_Control environments with joint space control\n- ``ee_sim_env.py`` Mujoco + DM_Control environments with EE space control\n- ``scripted_policy.py`` Scripted policies for sim environments",
+        "type": "code",
+        "location": "/README.md:1-20"
+    },
+    "3": {
+        "file_id": 0,
+        "content": "This code contains the implementation of ACT, Diffusion Policy, and VINN along with two simulated environments (Transfer Cube and Bimanual Insertion) that can be trained and evaluated in sim or real settings. It also requires installing Mobile ALOHA from a separate repository, which has been forked from the ACT repo. The code is organized into several Python files, each responsible for specific aspects of the algorithms or environments. Demo scripts for simulated environments are available online.",
+        "type": "comment"
+    },
+    "4": {
+        "file_id": 0,
+        "content": "- ``constants.py`` Constants shared across files\n- ``utils.py`` Utils such as data loading and helper functions\n- ``visualize_episodes.py`` Save videos from a .hdf5 dataset\n### Installation\n    conda create -n aloha python=3.8.10\n    conda activate aloha\n    pip install torchvision\n    pip install torch\n    pip install pyquaternion\n    pip install pyyaml\n    pip install rospkg\n    pip install pexpect\n    pip install mujoco==2.3.7\n    pip install dm_control==1.0.14\n    pip install opencv-python\n    pip install matplotlib\n    pip install einops\n    pip install packaging\n    pip install h5py\n    pip install ipython\n    cd act/detr && pip install -e .\n- also need to install https://github.com/ARISE-Initiative/robomimic/tree/r2d2 (note the r2d2 branch) for Diffusion Policy by `pip install -e .`\n### Example Usages\nTo set up a new terminal, run:\n    conda activate aloha\n    cd <path to act repo>\n### Simulated experiments (LEGACY table-top ALOHA environments)\nWe use ``sim_transfer_cube_scripted`` task in the examples below. Another option is ``sim_insertion_scripted``.",
+        "type": "code",
+        "location": "/README.md:21-57"
+    },
+    "5": {
+        "file_id": 0,
+        "content": "This code provides installation instructions for the environment and dependencies needed to run the ALOHA codebase. It also mentions the necessary steps to set up a new terminal and highlights some of the available simulation experiments.",
+        "type": "comment"
+    },
+    "6": {
+        "file_id": 0,
+        "content": "To generated 50 episodes of scripted data, run:\n    python3 record_sim_episodes.py --task_name sim_transfer_cube_scripted --dataset_dir <data save dir> --num_episodes 50\nTo can add the flag ``--onscreen_render`` to see real-time rendering.\nTo visualize the simulated episodes after it is collected, run\n    python3 visualize_episodes.py --dataset_dir <data save dir> --episode_idx 0\nNote: to visualize data from the mobile-aloha hardware, use the visualize_episodes.py from https://github.com/MarkFzp/mobile-aloha\nTo train ACT:\n    # Transfer Cube task\n    python3 imitate_episodes.py --task_name sim_transfer_cube_scripted --ckpt_dir <ckpt dir> --policy_class ACT --kl_weight 10 --chunk_size 100 --hidden_dim 512 --batch_size 8 --dim_feedforward 3200 --num_epochs 2000  --lr 1e-5 --seed 0\nTo evaluate the policy, run the same command but add ``--eval``. This loads the best validation checkpoint.\nThe success rate should be around 90% for transfer cube, and around 50% for insertion.\nTo enable temporal ensembling, add flag ``--temporal_agg``.",
+        "type": "code",
+        "location": "/README.md:58-77"
+    },
+    "7": {
+        "file_id": 0,
+        "content": "This code provides instructions for generating and visualizing data, training the ACT model, and evaluating its performance. It also mentions the expected success rates for different tasks and includes an option for temporal ensembling.",
+        "type": "comment"
+    },
+    "8": {
+        "file_id": 0,
+        "content": "Videos will be saved to ``<ckpt_dir>`` for each rollout.\nYou can also add ``--onscreen_render`` to see real-time rendering during evaluation.\nFor real-world data where things can be harder to model, train for at least 5000 epochs or 3-4 times the length after the loss has plateaued.\nPlease refer to [tuning tips](https://docs.google.com/document/d/1FVIZfoALXg_ZkYKaYVh-qOlaXveq5CtvJHXkY25eYhs/edit?usp=sharing) for more info.\n### [ACT tuning tips](https://docs.google.com/document/d/1FVIZfoALXg_ZkYKaYVh-qOlaXveq5CtvJHXkY25eYhs/edit?usp=sharing)\nTL;DR: if your ACT policy is jerky or pauses in the middle of an episode, just train for longer! Success rate and smoothness can improve way after loss plateaus.",
+        "type": "code",
+        "location": "/README.md:78-85"
+    },
+    "9": {
+        "file_id": 0,
+        "content": "This code snippet provides instructions for saving videos to a specified directory during rollouts, and suggests using the \"--onscreen_render\" option for real-time rendering. It recommends training for at least 5000 epochs or three to four times the length of data after loss plateaus for better results in real-world scenarios. The code also provides a link to additional tuning tips for further information and emphasizes that longer training can improve success rate and smoothness even when the loss has plateaued.",
+        "type": "comment"
+    },
+    "10": {
+        "file_id": 1,
+        "content": "/__init__.py",
+        "type": "filepath"
+    },
+    "11": {
+        "file_id": 1,
+        "content": "The code snippet appears to be incomplete or empty. There is no visible functionality that can be described or commented upon in this context. Please provide more information or a complete code sample for accurate analysis and commenting.",
+        "type": "summary"
+    },
+    "12": {
+        "file_id": 1,
+        "content": "w",
+        "type": "code",
+        "location": "/__init__.py:1-1"
+    },
+    "13": {
+        "file_id": 1,
+        "content": "The code snippet appears to be incomplete or empty. There is no visible functionality that can be described or commented upon in this context. Please provide more information or a complete code sample for accurate analysis and commenting.",
+        "type": "comment"
+    },
+    "14": {
+        "file_id": 2,
+        "content": "/align.py",
+        "type": "filepath"
+    },
+    "15": {
+        "file_id": 2,
+        "content": "This code imports modules, defines a calibration function for head cam and symmetrical arms, creates instances of InterbotixManipulatorXS bots, sets arm positions to sleep for 2 seconds, and opens grippers.",
+        "type": "summary"
+    },
+    "16": {
+        "file_id": 2,
+        "content": "from interbotix_xs_modules.arm import InterbotixManipulatorXS\nfrom aloha_scripts.robot_utils import move_arms, torque_on, move_grippers\nfrom constants import PUPPET_GRIPPER_JOINT_OPEN, PUPPET_GRIPPER_JOINT_CLOSE\nimport argparse\nimport numpy as np\n# for calibrating head cam and arms being symmetrical\ndef main():\n    argparser = argparse.ArgumentParser()\n    argparser.add_argument('--all', action='store_true', default=False)\n    args = argparser.parse_args()\n    puppet_bot_left = InterbotixManipulatorXS(robot_model=\"vx300s\", group_name=\"arm\", gripper_name=\"gripper\", robot_name=f'puppet_left', init_node=True)\n    puppet_bot_right = InterbotixManipulatorXS(robot_model=\"vx300s\", group_name=\"arm\", gripper_name=\"gripper\", robot_name=f'puppet_right', init_node=False)\n    all_bots = [puppet_bot_left, puppet_bot_right]\n    for bot in all_bots:\n        torque_on(bot)\n    multiplier = np.array([-1, 1, 1, -1, 1, 1])\n    puppet_sleep_position_left = np.array([-0.8, -0.5, 0.5, 0, 0.65, 0])\n    puppet_sleep_position_right = puppet_sleep_position_left * multiplier",
+        "type": "code",
+        "location": "/align.py:1-23"
+    },
+    "17": {
+        "file_id": 2,
+        "content": "Code imports necessary modules and defines a function for calibrating head cam and symmetrical arms. It creates instances of InterbotixManipulatorXS for left and right puppet bots, turns on torque, and initializes positions based on multipliers for symmetry.",
+        "type": "comment"
+    },
+    "18": {
+        "file_id": 2,
+        "content": "    all_positions = [puppet_sleep_position_left, puppet_sleep_position_right]\n    move_arms(all_bots, all_positions, move_time=2)\n    # move_grippers(all_bots, [PUPPET_GRIPPER_JOINT_OPEN] * 2, move_time=1)  # open\nif __name__ == '__main__':\n    main()",
+        "type": "code",
+        "location": "/align.py:24-31"
+    },
+    "19": {
+        "file_id": 2,
+        "content": "Sets all bots' arm positions to sleep positions for 2 seconds, then opens grippers.",
+        "type": "comment"
+    },
+    "20": {
+        "file_id": 3,
+        "content": "/commands.txt",
+        "type": "filepath"
+    },
+    "21": {
+        "file_id": 3,
+        "content": "The code trains RL models, preprocesses data, and experiments with hyperparameters. It creates a Conda environment, trains multi-task camera views for mobile chair tasks, caches features, evaluates VINN model, and uses separate dataset directories and checkpoints.",
+        "type": "summary"
+    },
+    "22": {
+        "file_id": 3,
+        "content": "conda activate mimic\nexport MUJOCO_GL=egl\ncd /home/tonyzhao/Research/act-plus-plus\npython3 imitate_episodes.py \\\n--task_name sim_transfer_cube_human \\\n--ckpt_dir /scr/tonyzhao/train_logs/vq_test \\\n--policy_class ACT --kl_weight 10 --chunk_size 100 \\\n--hidden_dim 512 --batch_size 8 --dim_feedforward 3200 \\\n--num_epochs 10000 --lr 1e-5 --seed 0 --vq\nconda activate mobile\ncd /home/tonyzhao/Research/act-plus-plus\nCUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \\\n--task_name all \\\n--ckpt_dir /scr/tonyzhao/train_logs/pretrain_all \\\n--policy_class ACT --kl_weight 10 --chunk_size 50 \\\n--hidden_dim 512 --batch_size 24 --dim_feedforward 3200 --num_epochs 5000 --lr 1e-4 --seed 0\n#### NOTE to reproduce this experiment, uncomment the sim data filtering in utils.py\nconda activate mobile\ncd /home/tonyzhao/Research/act-plus-plus\nCUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \\\n--task_name all \\\n--ckpt_dir /scr/tonyzhao/train_logs/pretrain_all \\\n--policy_class ACT --kl_weight 10 --chunk_size 50 \\\n--hidden_dim 512 --batch_size 24 --dim_feedforward 3200 --lr 1e-4 --seed 0 \\",
+        "type": "code",
+        "location": "/commands.txt:2-28"
+    },
+    "23": {
+        "file_id": 3,
+        "content": "This code activates a conda environment, sets up some environment variables, and then runs Python scripts with different parameters for model training and experimentation. It seems to be related to reinforcement learning tasks using the MUJOCO library. The code executes multiple experiments with varying hyperparameters to train and evaluate models on different datasets or tasks.",
+        "type": "comment"
+    },
+    "24": {
+        "file_id": 3,
+        "content": "--num_steps 1000000 --eval_every 10000000000 --validate_every 2000 --save_every 5000\n# generate mirrored data\nconda activate mobile\ncd /home/tonyzhao/Research/act-plus-plus\npython3 record_sim_episodes.py --task_name sim_transfer_cube_scripted_mirror --dataset_dir /scr/tonyzhao/datasets/sim_transfer_cube_scripted_mirror --num_episodes 50\npython3 postprocess_episodes.py --dataset_dir /scr/tonyzhao/datasets/sim_transfer_cube_scripted_mirror --num_episodes 50\n# the sim_transfer_cube_scripted_mirror will have 100 episodes\n# I then copy the whole dir to sim_transfer_cube_scripted then removed all mirrored episodes\n# this gives sim_transfer_cube_scripted_mirror (100 episodes) and sim_transfer_cube_scripted (50 episodes)\n# visualize the original data\npython3 visualize_episodes.py --dataset_dir /scr/tonyzhao/datasets/sim_transfer_cube_scripted_mirror --episode_idx 0\n# visualize the artificially mirrored data\npython3 visualize_episodes.py --dataset_dir /scr/tonyzhao/datasets/sim_transfer_cube_scripted_mirror --episode_idx 0 --ismirror",
+        "type": "code",
+        "location": "/commands.txt:29-43"
+    },
+    "25": {
+        "file_id": 3,
+        "content": "This code generates mirrored data for a simulation task, creates two dataset directories (one with 100 episodes and the other with 50), visualizes original and artificially mirrored data from the first episode in the dataset. The user then activates a conda environment, changes to the directory containing the code, and runs Python scripts to accomplish these tasks.",
+        "type": "comment"
+    },
+    "26": {
+        "file_id": 3,
+        "content": "# sanity check\n# replay the mirrored data action in the original env\npython3 replay_episodes.py  --dataset_path /scr/tonyzhao/datasets/sim_transfer_cube_scripted_mirror/mirror_episode_0.hdf5\n# replay the original data action in the original env\npython3 replay_episodes.py  --dataset_path /scr/tonyzhao/datasets/sim_transfer_cube_scripted_mirror/episode_0.hdf5\n# launch experiment on original data\nconda activate mobile\nexport MUJOCO_GL=egl\ncd /home/tonyzhao/Research/act-plus-plus\nCUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \\\n--task_name sim_transfer_cube_scripted \\\n--ckpt_dir /scr/tonyzhao/train_logs/cube_scripted \\\n--policy_class ACT --kl_weight 10 --chunk_size 50 \\\n--hidden_dim 512 --batch_size 12 --dim_feedforward 3200 --lr 1e-5 --seed 0 \\\n--num_steps 100000 --eval_every 2000 --validate_every 2000 --save_every 2000 --no_encoder\n# launch experiment on all data\nconda activate mobile\nexport MUJOCO_GL=egl\ncd /home/tonyzhao/Research/act-plus-plus\nCUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \\\n--task_name sim_transfer_cube_scripted_mirror \\",
+        "type": "code",
+        "location": "/commands.txt:45-69"
+    },
+    "27": {
+        "file_id": 3,
+        "content": "The code sanity checks the mirrored and original data by replaying the actions in their respective environments, then launches experiments on both datasets using the ACT policy with specified parameters.",
+        "type": "comment"
+    },
+    "28": {
+        "file_id": 3,
+        "content": "--ckpt_dir /scr/tonyzhao/train_logs/cube_scripted_mirror \\\n--policy_class ACT --kl_weight 10 --chunk_size 50 \\\n--hidden_dim 512 --batch_size 12 --dim_feedforward 3200 --lr 1e-5 --seed 0 \\\n--num_steps 100000 --eval_every 2000 --validate_every 2000 --save_every 2000 --no_encoder\n####### DIFFUSION POLICY\n- first install https://github.com/ARISE-Initiative/robomimic/tree/r2d2 (note the r2d2 branch)\n- on top of it pip install the current repo requirements\nconda activate mobile\nexport MUJOCO_GL=egl\ncd /home/tonyzhao/Research/act-plus-plus\nCUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \\\n--task_name sim_transfer_cube_scripted \\\n--ckpt_dir /scr/tonyzhao/train_logs/cube_scripted_diffusion_sweep_0 \\\n--policy_class Diffusion --chunk_size 32 \\\n--batch_size 32 --lr 1e-5 --seed 0 \\\n--num_steps 100000 --eval_every 2000 --validate_every 2000 --save_every 2000\nconda activate mobile\nexport MUJOCO_GL=egl\ncd /home/tonyzhao/Research/act-plus-plus\nCUDA_VISIBLE_DEVICES=1 python3 imitate_episodes.py \\\n--task_name sim_transfer_cube_scripted \\",
+        "type": "code",
+        "location": "/commands.txt:70-97"
+    },
+    "29": {
+        "file_id": 3,
+        "content": "The code is running a Python script named \"imitate_episodes.py\" from the act-plus-plus repository, training a policy for imitation learning using different configurations. It switches between two policies (ACT and Diffusion) with varying hyperparameters, such as chunk size, batch size, and number of steps. The code also specifies the task name, checkpoint directory, and activates a specific conda environment before running the script on different GPUs.",
+        "type": "comment"
+    },
+    "30": {
+        "file_id": 3,
+        "content": "--ckpt_dir /scr/tonyzhao/train_logs/cube_scripted_diffusion_sweep_1 \\\n--policy_class Diffusion --chunk_size 16 \\\n--batch_size 32 --lr 1e-5 --seed 0 \\\n--num_steps 100000 --eval_every 2000 --validate_every 2000 --save_every 2000\n# above are all 100 train diffusion steps, 1e-5\nconda activate mobile\nexport MUJOCO_GL=egl\ncd /home/tonyzhao/Research/act-plus-plus\nCUDA_VISIBLE_DEVICES=1 python3 imitate_episodes.py \\\n--task_name sim_transfer_cube_scripted \\\n--ckpt_dir /scr/tonyzhao/train_logs/cube_scripted_diffusion_sweep_2_50step_1e-4 \\\n--policy_class Diffusion --chunk_size 32 \\\n--batch_size 32 --lr 1e-4 --seed 0 \\\n--num_steps 100000 --eval_every 2000 --validate_every 2000 --save_every 2000\n# Dec 10\n######################## more diffusion ########################\nconda activate mobile\nexport MUJOCO_GL=egl\ncd /home/tonyzhao/Research/act-plus-plus\nCUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \\\n--task_name sim_transfer_cube_scripted \\\n--ckpt_dir /scr/tonyzhao/train_logs/cube_scripted_diffusion_sweep_3_chunk64 \\\n--policy_class Diffusion --chunk_size 64 \\",
+        "type": "code",
+        "location": "/commands.txt:98-125"
+    },
+    "31": {
+        "file_id": 3,
+        "content": "The code snippet is used to train and evaluate a policy for a task named \"sim_transfer_cube_scripted\" using different configurations. It activates a specific conda environment, sets the MUJOCO_GL environment variable, changes directory to the project's root, and executes the imitate_episodes.py script multiple times with varying parameters such as CUDA device, learning rate, chunk size, and checkpoint directories. The code seems to be part of a larger training process involving different diffusion steps, potentially for model performance optimization or comparison.",
+        "type": "comment"
+    },
+    "32": {
+        "file_id": 3,
+        "content": "--batch_size 32 --lr 1e-4 --seed 0 \\\n--num_steps 200000 --eval_every 4000 --validate_every 4000 --save_every 4000\nconda activate mobile\nexport MUJOCO_GL=egl\ncd /home/tonyzhao/Research/act-plus-plus\nCUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \\\n--task_name sim_transfer_cube_scripted \\\n--ckpt_dir /scr/tonyzhao/train_logs/cube_scripted_diffusion_sweep_4_regressionTest \\\n--policy_class Diffusion --chunk_size 32 \\\n--batch_size 32 --lr 1e-4 --seed 0 \\\n--num_steps 200000 --eval_every 6000 --validate_every 6000 --save_every 6000\nconda activate mobile\nexport MUJOCO_GL=egl\ncd /home/tonyzhao/Research/act-plus-plus\nCUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \\\n--task_name sim_transfer_cube_scripted \\\n--ckpt_dir /scr/tonyzhao/train_logs/cube_scripted_diffusion_sweep_5_noEMA \\\n--policy_class Diffusion --chunk_size 32 \\\n--batch_size 32 --lr 1e-4 --seed 0 \\\n--num_steps 200000 --eval_every 6000 --validate_every 6000 --save_every 6000\nconda activate mobile\nexport MUJOCO_GL=egl\ncd /home/tonyzhao/Research/act-plus-plus",
+        "type": "code",
+        "location": "/commands.txt:126-152"
+    },
+    "33": {
+        "file_id": 3,
+        "content": "This code activates a conda environment, sets MUJOCO_GL to egl, changes directory to act-plus-plus, and runs three different python scripts with varying hyperparameters for training and evaluation on the \"sim_transfer_cube_scripted\" task. The policy class is set to Diffusion and chunk size is 32. Each script has different checkpoint directories, numbers of steps, and evaluation frequencies.",
+        "type": "comment"
+    },
+    "34": {
+        "file_id": 3,
+        "content": "CUDA_VISIBLE_DEVICES=1 python3 imitate_episodes.py \\\n--task_name sim_transfer_cube_scripted \\\n--ckpt_dir /scr/tonyzhao/train_logs/cube_scripted_diffusion_sweep_6_noEMA_seed1 \\\n--policy_class Diffusion --chunk_size 32 \\\n--batch_size 32 --lr 1e-4 --seed 1 \\\n--num_steps 200000 --eval_every 6000 --validate_every 6000 --save_every 6000\n###### Diffusion Real ######\n## deploy\npython3 imitate_episodes.py --task_name aloha_mobile_wipe_wine --ckpt_dir /home/mobile-aloha/interbotix_ws/src/act/ckpts/wipe_wine_diffusion_augmentation_seed0/ --policy_class Diffusion --chunk_size 32 --batch_size 32 --lr 1e-4 --seed 0 --num_steps 1000000 --eval_every 1000000 --validate_every 5000 --save_every 5000 --eval\nconda activate mobile\nexport MUJOCO_GL=egl\ncd /home/tonyzhao/Research/act-plus-plus\nCUDA_VISIBLE_DEVICES=1 python3 imitate_episodes.py \\\n--task_name aloha_mobile_wipe_wine \\\n--ckpt_dir /scr/tonyzhao/train_logs/wipe_wine_diffusion_seed0 \\\n--policy_class Diffusion --chunk_size 32 \\\n--batch_size 32 --lr 1e-4 --seed 0 \\\n--num_steps 1000000 --eval_every 1000000 --validate_every 5000 --save_every 5000",
+        "type": "code",
+        "location": "/commands.txt:153-173"
+    },
+    "35": {
+        "file_id": 3,
+        "content": "This code is training and evaluating a diffusion-based policy model for two different tasks: \"sim_transfer_cube_scripted\" and \"aloha_mobile_wipe_wine\". It specifies the necessary command line arguments such as task name, checkpoint directory, policy class, chunk size, batch size, learning rate, seed, number of steps, evaluation frequency, validation frequency, and save frequency. The code also sets the CUDA device, environment variables, and activates a conda environment before running the training and evaluation scripts.",
+        "type": "comment"
+    },
+    "36": {
+        "file_id": 3,
+        "content": "## Cotrain\nconda activate mobile\nexport MUJOCO_GL=egl\ncd /home/tonyzhao/Research/act-plus-plus\nCUDA_VISIBLE_DEVICES=1 python3 imitate_episodes.py \\\n--task_name aloha_mobile_wipe_wine_cotrain \\\n--ckpt_dir /scr/tonyzhao/train_logs/wipe_wine_cotrain_diffusion_seed0 \\\n--policy_class Diffusion --chunk_size 32 \\\n--batch_size 32 --lr 1e-4 --seed 0 \\\n--num_steps 1000000 --eval_every 1000000 --validate_every 5000 --save_every 5000\n# train no cotrain again with augmentations\nconda activate mobile\nexport MUJOCO_GL=egl\ncd /home/tonyzhao/Research/act-plus-plus\nCUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \\\n--task_name aloha_mobile_wipe_wine \\\n--ckpt_dir /scr/tonyzhao/train_logs/wipe_wine_diffusion_augmentation_seed0 \\\n--policy_class Diffusion --chunk_size 32 \\\n--batch_size 32 --lr 1e-4 --seed 0 \\\n--num_steps 1000000 --eval_every 1000000 --validate_every 5000 --save_every 5000\n## Cotrain with augmentations\nconda activate mobile\nexport MUJOCO_GL=egl\ncd /home/tonyzhao/Research/act-plus-plus\nCUDA_VISIBLE_DEVICES=1 python3 imitate_episodes.py \\",
+        "type": "code",
+        "location": "/commands.txt:175-201"
+    },
+    "37": {
+        "file_id": 3,
+        "content": "This code is activating the mobile conda environment, setting MUJOCO_GL to egl, and running Python scripts in the act-plus-plus directory. It trains a model (Diffusion policy) for two different tasks: \"aloha\\_mobile\\_wipe\\_wine\\_cotrain\" and \"aloha\\_mobile\\_wipe\\_wine\". The first task is trained again with augmentations, while the second task is trained with augmentations. The code is running on CUDA device 0 and 1, saving models every 5000 steps, evaluating every 100,000 steps, and validating every 5,000 steps for a total of 1,000,000 steps.",
+        "type": "comment"
+    },
+    "38": {
+        "file_id": 3,
+        "content": "--task_name aloha_mobile_wipe_wine_cotrain \\\n--ckpt_dir /scr/tonyzhao/train_logs/wipe_wine_cotrain_diffusion_augmentation_seed0 \\\n--policy_class Diffusion --chunk_size 32 \\\n--batch_size 32 --lr 1e-4 --seed 0 \\\n--num_steps 1000000 --eval_every 1000000 --validate_every 5000 --save_every 5000\n# try chunk size 64, no cotrain\nconda activate mobile\nexport MUJOCO_GL=egl\ncd /home/tonyzhao/Research/act-plus-plus\nCUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \\\n--task_name aloha_mobile_wipe_wine \\\n--ckpt_dir /scr/tonyzhao/train_logs/wipe_wine_diffusion_augmentation_chunk64_seed0 \\\n--policy_class Diffusion --chunk_size 64 \\\n--batch_size 32 --lr 1e-4 --seed 0 \\\n--num_steps 1000000 --eval_every 1000000 --validate_every 5000 --save_every 5000\n# chunk 64 with cotrain\nconda activate mobile\nexport MUJOCO_GL=egl\ncd /home/tonyzhao/Research/act-plus-plus\nCUDA_VISIBLE_DEVICES=1 python3 imitate_episodes.py \\\n--task_name aloha_mobile_wipe_wine_cotrain \\\n--ckpt_dir /scr/tonyzhao/train_logs/wipe_wine_cotrain_diffusion_augmentation_chunk64_seed0 \\",
+        "type": "code",
+        "location": "/commands.txt:202-227"
+    },
+    "39": {
+        "file_id": 3,
+        "content": "The code is executing two different training jobs for a robotics task called 'aloha_mobile_wipe_wine'. It first trains the model with chunk size 32 and cotrain, then with chunk size 64 without cotrain. It also validates and saves models every 5000 steps. The code requires specific environment activation and environmental variable settings.",
+        "type": "comment"
+    },
+    "40": {
+        "file_id": 3,
+        "content": "--policy_class Diffusion --chunk_size 64 \\\n--batch_size 32 --lr 1e-4 --seed 0 \\\n--num_steps 1000000 --eval_every 1000000 --validate_every 5000 --save_every 5000\n# chunk 64 with cotrain + EMA\nconda activate mobile\nexport MUJOCO_GL=egl\ncd /home/tonyzhao/Research/act-plus-plus\nCUDA_VISIBLE_DEVICES=0 python3 imitate_episodes.py \\\n--task_name aloha_mobile_wipe_wine_2_cotrain \\\n--ckpt_dir /scr/tonyzhao/train_logs/wipe_wine_cotrain_diffusion_augmentation_chunk64_ema_seed0 \\\n--policy_class Diffusion --chunk_size 64 \\\n--batch_size 32 --lr 1e-4 --seed 0 \\\n--num_steps 1000000 --eval_every 1000000 --validate_every 5000 --save_every 5000\n# chunk 64 with cotrain + EMA + 3e-4\nconda activate mobile\nexport MUJOCO_GL=egl\ncd /home/tonyzhao/Research/act-plus-plus\nCUDA_VISIBLE_DEVICES=1 python3 imitate_episodes.py \\\n--task_name aloha_mobile_wipe_wine_2_cotrain \\\n--ckpt_dir /scr/tonyzhao/train_logs/wipe_wine_cotrain_diffusion_augmentation_chunk64_ema_3e-4_seed0 \\\n--policy_class Diffusion --chunk_size 64 \\\n--batch_size 32 --lr 3e-4 --seed 0 \\",
+        "type": "code",
+        "location": "/commands.txt:228-256"
+    },
+    "41": {
+        "file_id": 3,
+        "content": "This code activates the conda environment, sets environment variables, and runs a Python script to train a diffusion policy model with chunk size 64 for a task named \"aloha\\_mobile\\_wipe\\_wine\\_2\\_cotrain\". It saves checkpoints every 5000 steps. The first command trains the model with learning rate 1e-4, while the second one trains it with learning rate 3e-4.",
+        "type": "comment"
+    },
+    "42": {
+        "file_id": 3,
+        "content": "--num_steps 1000000 --eval_every 1000000 --validate_every 5000 --save_every 5000\n######################## VINN ########################\nconda activate mobile\ncd /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning\nCUDA_VISIBLE_DEVICES=1 python3 train.py --dataset_dir /scr/tonyzhao/datasets/sim_transfer_cube_scripted --cam_name top --seed 0\nconda activate mobile\ncd /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning\nCUDA_VISIBLE_DEVICES=0 python3 train.py --dataset_dir /scr/tonyzhao/datasets/sim_transfer_cube_scripted --cam_name left_wrist --seed 0\nconda activate mobile\ncd /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning\nCUDA_VISIBLE_DEVICES=1 python3 train.py --dataset_dir /scr/tonyzhao/datasets/sim_transfer_cube_scripted --cam_name right_wrist --seed 0\nconda activate mobile\ncd /home/tonyzhao/Research/act-plus-plus\nTASK_NAME=sim_transfer_cube_scripted\npython3 vinn_cache_feature.py --ckpt_path /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning/byol-${TASK_NAME}-DUMMY-seed-0.pt",
+        "type": "code",
+        "location": "/commands.txt:257-278"
+    },
+    "43": {
+        "file_id": 3,
+        "content": "This code activates a conda environment, changes directory, sets CUDA_VISIBLE_DEVICES, and runs the train.py script for different camera names with the same seed in a loop, then it switches to another conda environment and runs a vinn_cache_feature.py script using the saved checkpoint path.",
+        "type": "comment"
+    },
+    "44": {
+        "file_id": 3,
+        "content": "TASK_NAME=sim_transfer_cube_scripted\npython3 vinn_select_k.py \\\n--dataset_dir /scr/tonyzhao/datasets/sim_transfer_cube_scripted \\\n--ckpt_dir /scr/tonyzhao/train_logs/VINN-eval-seed-0-test\npython3 vinn_eval.py \\\n--dataset_dir /scr/tonyzhao/datasets/sim_transfer_cube_scripted \\\n--model_dir /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning/byol-${TASK_NAME}-DUMMY-seed-0.pt \\\n--ckpt_dir /scr/tonyzhao/train_logs/VINN-eval-seed-0-test \\\n--task_name $TASK_NAME \n## TODO\nmake sure env is consistent\ntune a bit more\n######################## VINN Real ########################\n### test backward compatibility\nconda activate mobile\ncd /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning\nCUDA_VISIBLE_DEVICES=1 python3 train.py --task sim_transfer_cube_scripted --cam_name top --seed 0\nCUDA_VISIBLE_DEVICES=1 python3 train.py --task sim_transfer_cube_scripted --cam_name left_wrist --seed 0\nconda activate mobile\ncd /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning\nCUDA",
+        "type": "code",
+        "location": "/commands.txt:280-307"
+    },
+    "45": {
+        "file_id": 3,
+        "content": "This code is running a series of commands to train and evaluate the VINN model on the sim_transfer_cube_scripted task. It first selects the dataset, loads the pre-trained model, evaluates it, and then tests backward compatibility with two different camera names ('top' and 'left_wrist'). The environment is activated, specific CUDA devices are set, and the training process is executed for both cameras using the byol_pytorch package.",
+        "type": "comment"
+    },
+    "46": {
+        "file_id": 3,
+        "content": "_VISIBLE_DEVICES=1 python3 train.py --task sim_transfer_cube_scripted --cam_name right_wrist --seed 0\nconda activate mobile\ncd /home/tonyzhao/Research/act-plus-plus\nTASK_NAME=sim_transfer_cube_scripted\npython3 vinn_cache_feature.py --ckpt_path /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning/byol-${TASK_NAME}-DUMMY-seed-0.pt\nTASK_NAME=sim_transfer_cube_scripted\npython3 vinn_select_k.py \\\n--dataset_dir /scr/tonyzhao/datasets/sim_transfer_cube_scripted \\\n--ckpt_dir /scr/tonyzhao/train_logs/VINN-eval-seed-0-test\npython3 vinn_eval.py \\\n--dataset_dir /scr/tonyzhao/datasets/sim_transfer_cube_scripted \\\n--model_dir /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning/byol-${TASK_NAME}-DUMMY-seed-0.pt \\\n--ckpt_dir /scr/tonyzhao/train_logs/VINN-eval-seed-0-test \\\n--task_name $TASK_NAME \n### new data loader passed backward compatibility\nconda activate mobile\ncd /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning\n#CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wipe_wine --cam_name cam_high --seed 0",
+        "type": "code",
+        "location": "/commands.txt:307-331"
+    },
+    "47": {
+        "file_id": 3,
+        "content": "Training a BYOL model for the sim_transfer_cube_scripted task, evaluating the trained model using vinn_eval.py, and utilizing the vinn_select_k.py to choose K best features from the dataset.",
+        "type": "comment"
+    },
+    "48": {
+        "file_id": 3,
+        "content": "#CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wipe_wine --cam_name cam_left_wrist --seed 0\n#CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wipe_wine --cam_name cam_right_wrist --seed 0\n#CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wipe_wine_cotrain --cam_name cam_high --seed 0\n#CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wipe_wine_cotrain --cam_name cam_left_wrist --seed 0\nCUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wipe_wine_cotrain --cam_name cam_right_wrist --seed 0\nconda activate mobile\ncd /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning\n#CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wash_pan --cam_name cam_high --seed 0\n#CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wash_pan --cam_name cam_left_wrist --seed 0\n#CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wash_pan --cam_name cam_right_wrist --seed 0\n#CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wash_pan_cotrain --cam_name cam_high --seed 0",
+        "type": "code",
+        "location": "/commands.txt:332-346"
+    },
+    "49": {
+        "file_id": 3,
+        "content": "This code snippet executes Python training scripts using CUDA for various tasks and cameras. It activates a specific conda environment, changes the directory to the relevant project folder, and trains models with different configurations (single-camera or co-trained) on tasks such as aloha_mobile_wipe_wine and aloha_mobile_wash_pan.",
+        "type": "comment"
+    },
+    "50": {
+        "file_id": 3,
+        "content": "#CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wash_pan_cotrain --cam_name cam_left_wrist --seed 0\nCUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wash_pan_cotrain --cam_name cam_right_wrist --seed 0\nconda activate mobile\ncd /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning\nCUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wipe_wine_cotrain --cam_name cam_right_wrist --seed 0\nCUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_elevator_truncated --cam_name cam_high --seed 0\nCUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_elevator_truncated --cam_name cam_left_wrist --seed 0\nCUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_elevator_truncated --cam_name cam_right_wrist --seed 0\nconda activate mobile\ncd /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning\nCUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_wash_pan_cotrain --cam_name cam_right_wrist --seed 0\nCUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_elevator_truncated_cotrain --cam_name cam_high --seed 0",
+        "type": "code",
+        "location": "/commands.txt:347-362"
+    },
+    "51": {
+        "file_id": 3,
+        "content": "This code snippet is running Python scripts using the CUDA_VISIBLE_DEVICES environment variable to control which GPU(s) are used. The commands are training different models for various tasks such as aloha_mobile_wash_pan_cotrain, aloha_mobile_elevator_truncated, etc., using different camera names and seeds. Some models are trained on the cam_left_wrist, cam_right_wrist, or cam_high cameras. The code is activated using Conda environments.",
+        "type": "comment"
+    },
+    "52": {
+        "file_id": 3,
+        "content": "CUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_elevator_truncated_cotrain --cam_name cam_left_wrist --seed 0\nCUDA_VISIBLE_DEVICES=1 python3 train.py --task aloha_mobile_elevator_truncated_cotrain --cam_name cam_right_wrist --seed 0\nconda activate mobile\nexport CUDA_VISIBLE_DEVICES=1\ncd /home/tonyzhao/Research/act-plus-plus\nTASK_NAME=aloha_mobile_wipe_wine\nDATA_NAME=aloha_mobile_wipe_wine\npython3 vinn_cache_feature.py --ckpt_path /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning/byol-${TASK_NAME}-DUMMY-seed-0.pt \\\n--dataset_dir /scr/tonyzhao/mobile_aloha_datasets/${DATA_NAME}\nconda activate mobile\nexport CUDA_VISIBLE_DEVICES=1\ncd /home/tonyzhao/Research/act-plus-plus\nTASK_NAME=aloha_mobile_wipe_wine_cotrain\nDATA_NAME=aloha_mobile_wipe_wine\npython3 vinn_cache_feature.py --ckpt_path /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning/byol-${TASK_NAME}-DUMMY-seed-0.pt \\\n--dataset_dir /scr/tonyzhao/mobile_aloha_datasets/${DATA_NAME}\nconda activate mobile\nexport CUDA_VISIBLE_DEVICES=1",
+        "type": "code",
+        "location": "/commands.txt:363-387"
+    },
+    "53": {
+        "file_id": 3,
+        "content": "The code is running two different Python scripts in a conda environment, training models on specific tasks (aloha_mobile_elevator_truncated_cotrain and aloha_mobile_wipe_wine_cotrain), using CUDA device 1. It then uses these trained models to cache features for the corresponding datasets and sets the CUDA visible devices, changing directories between actions.",
+        "type": "comment"
+    },
+    "54": {
+        "file_id": 3,
+        "content": "cd /home/tonyzhao/Research/act-plus-plus\nTASK_NAME=aloha_mobile_wash_pan\nDATA_NAME=aloha_mobile_wash_pan\npython3 vinn_cache_feature.py --ckpt_path /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning/byol-${TASK_NAME}-DUMMY-seed-0.pt \\\n--dataset_dir /scr/tonyzhao/mobile_aloha_datasets/${DATA_NAME}\nconda activate mobile\nexport CUDA_VISIBLE_DEVICES=1\ncd /home/tonyzhao/Research/act-plus-plus\nTASK_NAME=aloha_mobile_wash_pan_cotrain\nDATA_NAME=aloha_mobile_wash_pan\npython3 vinn_cache_feature.py --ckpt_path /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning/byol-${TASK_NAME}-DUMMY-seed-0.pt \\\n--dataset_dir /scr/tonyzhao/mobile_aloha_datasets/${DATA_NAME}\nconda activate mobile\nexport CUDA_VISIBLE_DEVICES=1\ncd /home/tonyzhao/Research/act-plus-plus\nTASK_NAME=aloha_mobile_elevator_truncated\nDATA_NAME=aloha_mobile_elevator_truncated\npython3 vinn_cache_feature.py --ckpt_path /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning/byol-${TASK_NAME}-DUMMY-seed-0.pt \\\n--dataset_dir /scr/tonyzhao/mobile_aloha_datasets/${DATA_NAME}",
+        "type": "code",
+        "location": "/commands.txt:388-409"
+    },
+    "55": {
+        "file_id": 3,
+        "content": "The code activates a conda environment called \"mobile\", sets the CUDA_VISIBLE_DEVICES environment variable to 1, and runs the vinn_cache_feature.py script for multiple tasks using different checkpoint paths and dataset directories.",
+        "type": "comment"
+    },
+    "56": {
+        "file_id": 3,
+        "content": "conda activate mobile\nexport CUDA_VISIBLE_DEVICES=1\ncd /home/tonyzhao/Research/act-plus-plus\nTASK_NAME=aloha_mobile_elevator_truncated_cotrain\nDATA_NAME=aloha_mobile_elevator_truncated\npython3 vinn_cache_feature.py --ckpt_path /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning/byol-${TASK_NAME}-DUMMY-seed-0.pt \\\n--dataset_dir /scr/tonyzhao/mobile_aloha_datasets/${DATA_NAME}\n# push chair task\nconda activate mobile\nexport CUDA_VISIBLE_DEVICES=0 \ncd /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning\npython3 train.py --task aloha_mobile_chair_truncated --cam_name cam_high --seed 0\npython3 train.py --task aloha_mobile_chair_truncated --cam_name cam_left_wrist --seed 0\npython3 train.py --task aloha_mobile_chair_truncated --cam_name cam_right_wrist --seed 0\ncd /home/tonyzhao/Research/act-plus-plus\nTASK_NAME=aloha_mobile_chair_truncated\nDATA_NAME=aloha_mobile_chair_truncated\npython3 vinn_cache_feature.py --ckpt_path /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning/byol-${TASK_NAME}-DUMMY-seed-0.pt \\",
+        "type": "code",
+        "location": "/commands.txt:411-433"
+    },
+    "57": {
+        "file_id": 3,
+        "content": "This code activates a specific conda environment, sets the visible CUDA devices, changes directories, and runs multiple training scripts for different camera views in a mobile chair task. It then activates another environment, changes directories again, and runs a feature caching script on trained models for the chair and elevator tasks.",
+        "type": "comment"
+    },
+    "58": {
+        "file_id": 3,
+        "content": "--dataset_dir /scr/tonyzhao/mobile_aloha_datasets/${DATA_NAME}\nconda activate mobile\nexport CUDA_VISIBLE_DEVICES=1\ncd /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning\npython3 train.py --task aloha_mobile_chair_truncated_cotrain --cam_name cam_high --seed 0\npython3 train.py --task aloha_mobile_chair_truncated_cotrain --cam_name cam_left_wrist --seed 0\npython3 train.py --task aloha_mobile_chair_truncated_cotrain --cam_name cam_right_wrist --seed 0\ncd /home/tonyzhao/Research/act-plus-plus\nTASK_NAME=aloha_mobile_chair_truncated_cotrain\nDATA_NAME=aloha_mobile_chair_truncated\npython3 vinn_cache_feature.py --ckpt_path /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning/byol-${TASK_NAME}-DUMMY-seed-0.pt \\\n--dataset_dir /scr/tonyzhao/mobile_aloha_datasets/${DATA_NAME}\n# cache feature again for wipe wine\nconda activate mobile\nexport CUDA_VISIBLE_DEVICES=0\ncd /home/tonyzhao/Research/act-plus-plus\nTASK_NAME=aloha_mobile_wipe_wine\nDATA_NAME=aloha_mobile_wipe_wine\npython3 vinn_c",
+        "type": "code",
+        "location": "/commands.txt:434-459"
+    },
+    "59": {
+        "file_id": 3,
+        "content": "This code snippet trains a BYOL model on the aloha_mobile_chair_truncated_cotrain task, then uses vinn_cache_feature.py to cache features for wipe wine dataset. It activates a conda environment, sets CUDA_VISIBLE_DEVICES, changes directories, and runs Python training scripts with specific parameters.",
+        "type": "comment"
+    },
+    "60": {
+        "file_id": 3,
+        "content": "ache_feature.py --ckpt_path /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning/byol-${TASK_NAME}-DUMMY-seed-0.pt \\\n--dataset_dir /scr/tonyzhao/mobile_aloha_datasets/${DATA_NAME}\ncd /home/tonyzhao/Research/act-plus-plus\nTASK_NAME=aloha_mobile_wipe_wine_cotrain\nDATA_NAME=aloha_mobile_wipe_wine\npython3 vinn_cache_feature.py --ckpt_path /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning/byol-${TASK_NAME}-DUMMY-seed-0.pt \\\n--dataset_dir /scr/tonyzhao/mobile_aloha_datasets/${DATA_NAME}\n# run on real robot\nTASK_NAME=aloha_mobile_chair_truncated\npython3 vinn_select_k.py \\\n--dataset_dir /scr/tonyzhao/mobile_aloha_datasets/${DATA_NAME} \\\n--ckpt_dir /scr/tonyzhao/train_logs/VINN-eval-${TASK_NAME}-seed-0\npython3 vinn_eval.py \\\n--dataset_dir /scr/tonyzhao/datasets/sim_transfer_cube_scripted \\\n--model_dir /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning/byol-${TASK_NAME}-DUMMY-seed-0.pt \\\n--ckpt_dir /scr/tonyzhao/train_logs/VINN-eval-${TASK_NAME}-seed-0 \\\n--task_name $TASK_NAME ",
+        "type": "code",
+        "location": "/commands.txt:459-481"
+    },
+    "61": {
+        "file_id": 3,
+        "content": "This code is running a series of commands to train and evaluate a vision-in-nervous-system (VINN) model. The model is being trained on different datasets for various tasks such as chair recognition, mobile wipe, and wine classification. The commands use Python scripts with specific paths and arguments to perform these tasks.",
+        "type": "comment"
+    },
+    "62": {
+        "file_id": 3,
+        "content": "TASK_NAME=aloha_mobile_chair_truncated\npython3 vinn_select_k.py \\\n--dataset_dir /scr/tonyzhao/mobile_aloha_datasets/${DATA_NAME} \\\n--ckpt_dir /scr/tonyzhao/train_logs/VINN-eval-${TASK_NAME}-seed-0\npython3 vinn_eval.py \\\n--dataset_dir /scr/tonyzhao/datasets/sim_transfer_cube_scripted \\\n--model_dir /home/tonyzhao/Research/act-plus-plus/byol_pytorch/examples/lightning/byol-${TASK_NAME}-DUMMY-seed-0.pt \\\n--ckpt_dir /scr/tonyzhao/train_logs/VINN-eval-${TASK_NAME}-seed-0 \\\n--task_name $TASK_NAME \n# eval on real robot\nconda activate aloha\ncd /home/mobile-aloha/interbotix_ws/src/act\nTASK_NAME=aloha_mobile_wipe_wine\npython3 vinn_cache_feature.py --ckpt_path /home/mobile-aloha/interbotix_ws/src/act/ckpts/vinn_ckpts/byol-${TASK_NAME}-DUMMY-seed-0.pt\nTASK_NAME=aloha_mobile_wipe_wine\npython3 vinn_select_k.py \\\n--dataset_dir /home/mobile-aloha/data/${TASK_NAME} \\\n--ckpt_dir /home/mobile-aloha/interbotix_ws/src/act/ckpts/vinn_ckpts/VINN-eval-seed-0-test \\\nTASK_NAME=aloha_mobile_wipe_wine\npython3 vinn_eval.py \\\n--dataset_dir /home/mobile-aloha/data/${TASK_NAME} \\",
+        "type": "code",
+        "location": "/commands.txt:485-514"
+    },
+    "63": {
+        "file_id": 3,
+        "content": "The code runs two separate python scripts for evaluating and training models on different datasets. The first set of commands trains a model using the VINN approach and BYOL implementation, while the second set of commands evaluates and caches features on a real robot. Both processes involve multiple dataset directories and checkpoint paths to train/evaluate/cache feature sets.",
+        "type": "comment"
+    },
+    "64": {
+        "file_id": 3,
+        "content": "--model_dir /home/mobile-aloha/interbotix_ws/src/act/ckpts/vinn_ckpts/byol-${TASK_NAME}-DUMMY-seed-0.pt \\\n--ckpt_dir /home/mobile-aloha/interbotix_ws/src/act/ckpts/vinn_ckpts/VINN-eval-seed-0-test \\\n--task_name $TASK_NAME \n---------------------------------------------------------------------------------------\nNOTE: chunk size cannot be any number, try before launching\nTODO: Add history, EMA at test time\nconda activate mobile\ncd /home/tonyzhao/Research/act-plus-plus\nCUDA_VISIBLE_DEVICES=1 python3 train_actuator_network.py",
+        "type": "code",
+        "location": "/commands.txt:515-527"
+    },
+    "65": {
+        "file_id": 3,
+        "content": "This code activates a conda environment, changes to the project directory, sets the CUDA device, and runs a Python script for training an actuator network. The task name is provided as a variable, but the chunk size and some additional features are noted for future improvement.",
+        "type": "comment"
+    },
+    "66": {
+        "file_id": 4,
+        "content": "/compress_data.py",
+        "type": "filepath"
+    },
+    "67": {
+        "file_id": 4,
+        "content": "The code compresses images, handles HDF5 datasets, and processes videos. It removes depth images, concatenates camera videos, decompresses/compresses images, and saves the first episode video.",
+        "type": "summary"
+    },
+    "68": {
+        "file_id": 4,
+        "content": "\"\"\"\nExample usage:\n$ python3 script/compress_data.py --dataset_dir /scr/lucyshi/dataset/aloha_test\n\"\"\"\nimport os\nimport h5py\nimport cv2\nimport numpy as np\nimport argparse\nfrom tqdm import tqdm\n# Constants\nDT = 0.02\nJOINT_NAMES = [\"waist\", \"shoulder\", \"elbow\", \"forearm_roll\", \"wrist_angle\", \"wrist_rotate\"]\nSTATE_NAMES = JOINT_NAMES + [\"gripper\"]\ndef compress_dataset(input_dataset_path, output_dataset_path):\n    # Check if output path exists\n    if os.path.exists(output_dataset_path):\n        print(f\"The file {output_dataset_path} already exists. Exiting...\")\n        return\n    # Load the uncompressed dataset\n    with h5py.File(input_dataset_path, 'r') as infile:\n        # Create the compressed dataset\n        with h5py.File(output_dataset_path, 'w') as outfile:\n            outfile.attrs['sim'] = infile.attrs['sim']\n            outfile.attrs['compress'] = True\n            # Copy non-image data directly\n            for key in infile.keys():\n                if key != 'observations':\n                    outfile.copy(infile[key], key)",
+        "type": "code",
+        "location": "/compress_data.py:1-35"
+    },
+    "69": {
+        "file_id": 4,
+        "content": "The code compresses a dataset by creating a new compressed HDF5 file. It checks if the output path already exists, loads the uncompressed dataset, creates the compressed dataset with the same non-image data and attributes, and then copies over only the 'observations' key from the input file to the output file.",
+        "type": "comment"
+    },
+    "70": {
+        "file_id": 4,
+        "content": "            obs_group = infile['observations']\n            # Create observation group in the output\n            out_obs_group = outfile.create_group('observations')\n            # Copy non-image data in observations directly\n            for key in obs_group.keys():\n                if key != 'images':\n                    out_obs_group.copy(obs_group[key], key)\n            image_group = obs_group['images']\n            out_image_group = out_obs_group.create_group('images')\n            # JPEG compression parameters\n            encode_param = [int(cv2.IMWRITE_JPEG_QUALITY), 50]\n            compressed_lens = []  # List to store compressed lengths for each camera\n            for cam_name in image_group.keys():\n                if \"_depth\" in cam_name:  # Depth images are not compressed\n                    out_image_group.copy(image_group[cam_name], cam_name)\n                else:\n                    images = image_group[cam_name]\n                    compressed_images = []\n                    cam_compressed_lens = []  # List to store compressed lengths for this camera",
+        "type": "code",
+        "location": "/compress_data.py:37-61"
+    },
+    "71": {
+        "file_id": 4,
+        "content": "Creates observation group in output file, copies non-image data, creates image group in observations, applies JPEG compression parameters, skips depth images, stores compressed lengths for each camera.",
+        "type": "comment"
+    },
+    "72": {
+        "file_id": 4,
+        "content": "                    # Compress each image\n                    for image in images:\n                        result, encoded_image = cv2.imencode('.jpg', image, encode_param)\n                        compressed_images.append(encoded_image)\n                        cam_compressed_lens.append(len(encoded_image))  # Store the length\n                    compressed_lens.append(cam_compressed_lens)\n                    # Find the maximum length of the compressed images\n                    max_len = max(len(img) for img in compressed_images)\n                    # Create dataset to store compressed images\n                    compressed_dataset = out_image_group.create_dataset(cam_name, (len(compressed_images), max_len), dtype='uint8')\n                    # Store compressed images\n                    for i, img in enumerate(compressed_images):\n                        compressed_dataset[i, :len(img)] = img\n            # Save the compressed lengths to the HDF5 file\n            compressed_lens = np.array(compressed_lens)",
+        "type": "code",
+        "location": "/compress_data.py:63-82"
+    },
+    "73": {
+        "file_id": 4,
+        "content": "This code compresses images and stores their lengths in a list. It then finds the maximum length of the compressed images and creates a dataset to store them in an HDF5 file, with the same length as the number of images. Finally, it saves the compressed lengths to the HDF5 file.",
+        "type": "comment"
+    },
+    "74": {
+        "file_id": 4,
+        "content": "            _ = outfile.create_dataset('compress_len', compressed_lens.shape)\n            outfile['/compress_len'][...] = compressed_lens\n    print(f\"Compressed dataset saved to {output_dataset_path}\")\ndef save_videos(video, dt, video_path=None):\n    if isinstance(video, list):\n        cam_names = list(video[0].keys())\n        h, w, _ = video[0][cam_names[0]].shape\n        w = w * len(cam_names)\n        fps = int(1/dt)\n        out = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))\n        # bitrate = 1000000\n        # out.set(cv2.VIDEOWRITER_PROP_BITRATE, bitrate)\n        for ts, image_dict in enumerate(video):\n            images = []\n            for cam_name in cam_names:\n                image = image_dict[cam_name]\n                image = image[:, :, [2, 1, 0]] # swap B and R channel\n                images.append(image)\n            images = np.concatenate(images, axis=1)\n            out.write(images)\n        out.release()\n        print(f'Saved video to: {video_path}')\n    elif isinstance(video, dict):",
+        "type": "code",
+        "location": "/compress_data.py:83-108"
+    },
+    "75": {
+        "file_id": 4,
+        "content": "Code saves a compressed dataset to the specified output path. It first checks if the video is in a list or dictionary format, and then creates a VideoWriter object with the desired parameters. For each frame of the video, it concatenates images from all cameras into one image, swaps B and R channels, and writes the resulting image to the output file. Finally, it releases the VideoWriter object and prints the saved video path.",
+        "type": "comment"
+    },
+    "76": {
+        "file_id": 4,
+        "content": "        cam_names = list(video.keys())\n        # Remove depth images\n        cam_names = [cam_name for cam_name in cam_names if '_depth' not in cam_name]\n        all_cam_videos = []\n        for cam_name in cam_names:\n            all_cam_videos.append(video[cam_name])\n        all_cam_videos = np.concatenate(all_cam_videos, axis=2) # width dimension\n        n_frames, h, w, _ = all_cam_videos.shape\n        fps = int(1 / dt)\n        out = cv2.VideoWriter(video_path, cv2.VideoWriter_fourcc(*'mp4v'), fps, (w, h))\n        for t in range(n_frames):\n            image = all_cam_videos[t]\n            image = image[:, :, [2, 1, 0]]  # swap B and R channel\n            out.write(image)\n        out.release()\n        print(f'Saved video to: {video_path}')\ndef load_and_save_first_episode_video(dataset_dir, video_path):\n    dataset_name = 'episode_0'\n    _, _, _, _, image_dict = load_hdf5(dataset_dir, dataset_name)\n    save_videos(image_dict, DT, video_path=video_path)\ndef load_hdf5(dataset_dir, dataset_name):\n    dataset_path = os.path.join(dataset_dir, dataset_name + '.hdf5')",
+        "type": "code",
+        "location": "/compress_data.py:109-135"
+    },
+    "77": {
+        "file_id": 4,
+        "content": "This code loads an HDF5 dataset, removes depth images, concatenates remaining camera videos along the width dimension, saves the resulting video, and provides functions for loading and saving the first episode video.",
+        "type": "comment"
+    },
+    "78": {
+        "file_id": 4,
+        "content": "    if not os.path.isfile(dataset_path):\n        print(f'Dataset does not exist at \\n{dataset_path}\\n')\n        exit()\n    with h5py.File(dataset_path, 'r') as root:\n        compressed = root.attrs.get('compress', False)\n        image_dict = dict()\n        for cam_name in root[f'/observations/images/'].keys():\n            image_dict[cam_name] = root[f'/observations/images/{cam_name}'][()]\n        if compressed:\n            compress_len = root['/compress_len'][()]\n    if compressed:\n        for cam_id, cam_name in enumerate(image_dict.keys()):\n            padded_compressed_image_list = image_dict[cam_name]\n            image_list = []\n            for frame_id, padded_compressed_image in enumerate(padded_compressed_image_list):\n                image_len = int(compress_len[cam_id, frame_id])\n                compressed_image = padded_compressed_image\n                image = cv2.imdecode(compressed_image, 1)\n                image_list.append(image)\n            image_dict[cam_name] = image_list\n    return None, None, None, None, image_dict  # Return only the image dict for this application",
+        "type": "code",
+        "location": "/compress_data.py:136-159"
+    },
+    "79": {
+        "file_id": 4,
+        "content": "This code checks if the dataset file exists, loads compressed images from the file, and returns an image dictionary. If the dataset file is missing, it prints a message and exits. Compressed images are loaded for each camera, and the compressed images are decompressed into a list of images per camera. The final result is the image dictionary containing these lists of images.",
+        "type": "comment"
+    },
+    "80": {
+        "file_id": 4,
+        "content": "if __name__ == '__main__':\n    parser = argparse.ArgumentParser(description=\"Compress all HDF5 datasets in a directory.\")\n    parser.add_argument('--dataset_dir', action='store', type=str, required=True, help='Directory containing the uncompressed datasets.')\n    args = parser.parse_args()\n    output_dataset_dir = args.dataset_dir + '_compressed'\n    os.makedirs(output_dataset_dir, exist_ok=True)\n    # Iterate over each file in the directory\n    for filename in tqdm(os.listdir(args.dataset_dir), desc=\"Compressing data\"):\n        if filename.endswith('.hdf5'):\n            input_path = os.path.join(args.dataset_dir, filename)\n            output_path = os.path.join(output_dataset_dir, filename)\n            compress_dataset(input_path, output_path)\n    # After processing all datasets, load and save the video for the first episode\n    print(f'Saving video for episode 0 in {output_dataset_dir}')\n    video_path = os.path.join(output_dataset_dir, 'episode_0_video.mp4')\n    load_and_save_first_episode_video(output_dataset_dir, video_path)",
+        "type": "code",
+        "location": "/compress_data.py:162-181"
+    },
+    "81": {
+        "file_id": 4,
+        "content": "This code compresses all HDF5 datasets in a specified directory. It requires the directory path, creates a compressed dataset directory, iterates over each file ending with '.hdf5', compresses the dataset using 'compress_dataset' function, and after processing all datasets, loads and saves the video for the first episode.",
+        "type": "comment"
+    },
+    "82": {
+        "file_id": 5,
+        "content": "/conda_env.yaml",
+        "type": "filepath"
+    },
+    "83": {
+        "file_id": 5,
+        "content": "This YAML file defines a Conda environment named \"aloha\" with specified channels, Python version, and required packages for the codebase.",
+        "type": "summary"
+    },
+    "84": {
+        "file_id": 5,
+        "content": "name: aloha\nchannels:\n  - pytorch\n  - nvidia\n  - conda-forge\ndependencies:\n  - python=3.9\n  - pip=23.0.1\n  - pytorch=2.0.0\n  - torchvision=0.15.0\n  - pytorch-cuda=11.8\n  - pyquaternion=0.9.9\n  - pyyaml=6.0\n  - rospkg=1.5.0\n  - pexpect=4.8.0\n  - mujoco=2.3.3\n  - dm_control=1.0.9\n  - py-opencv=4.7.0\n  - matplotlib=3.7.1\n  - einops=0.6.0\n  - packaging=23.0\n  - h5py=3.8.0\n  - ipython=8.12.0",
+        "type": "code",
+        "location": "/conda_env.yaml:1-23"
+    },
+    "85": {
+        "file_id": 5,
+        "content": "This YAML file defines a Conda environment named \"aloha\" with specified channels, Python version, and required packages for the codebase.",
+        "type": "comment"
+    },
+    "86": {
+        "file_id": 6,
+        "content": "/constants.py",
+        "type": "filepath"
+    },
+    "87": {
+        "file_id": 6,
+        "content": "This code defines task parameters and simulation environments for robotics applications, including gripper position limits, joint names, and normalization functions for master and puppet grippers.",
+        "type": "summary"
+    },
+    "88": {
+        "file_id": 6,
+        "content": "import pathlib\nimport os\n### Task parameters\nDATA_DIR = '/home/zfu/interbotix_ws/src/act/data' if os.getlogin() == 'zfu' else '/scr/tonyzhao/datasets'\nSIM_TASK_CONFIGS = {\n    'sim_transfer_cube_scripted':{\n        'dataset_dir': DATA_DIR + '/sim_transfer_cube_scripted',\n        'num_episodes': 50,\n        'episode_len': 400,\n        'camera_names': ['top', 'left_wrist', 'right_wrist']\n    },\n    'sim_transfer_cube_human':{\n        'dataset_dir': DATA_DIR + '/sim_transfer_cube_human',\n        'num_episodes': 50,\n        'episode_len': 400,\n        'camera_names': ['top']\n    },\n    'sim_insertion_scripted': {\n        'dataset_dir': DATA_DIR + '/sim_insertion_scripted',\n        'num_episodes': 50,\n        'episode_len': 400,\n        'camera_names': ['top', 'left_wrist', 'right_wrist']\n    },\n    'sim_insertion_human': {\n        'dataset_dir': DATA_DIR + '/sim_insertion_human',\n        'num_episodes': 50,\n        'episode_len': 500,\n        'camera_names': ['top']\n    },\n    'all': {\n        'dataset_dir': DATA_DIR + '/',",
+        "type": "code",
+        "location": "/constants.py:1-35"
+    },
+    "89": {
+        "file_id": 6,
+        "content": "This code defines constant values for task parameters. It specifies different simulation tasks, their associated dataset directories, the number of episodes, episode length, and camera names. These constants are used for organizing and accessing datasets in the 'DATA_DIR' directory.",
+        "type": "comment"
+    },
+    "90": {
+        "file_id": 6,
+        "content": "        'num_episodes': None,\n        'episode_len': None,\n        'name_filter': lambda n: 'sim' not in n,\n        'camera_names': ['cam_high', 'cam_left_wrist', 'cam_right_wrist']\n    },\n    'sim_transfer_cube_scripted_mirror':{\n        'dataset_dir': DATA_DIR + '/sim_transfer_cube_scripted_mirror',\n        'num_episodes': None,\n        'episode_len': 400,\n        'camera_names': ['top', 'left_wrist', 'right_wrist']\n    },\n    'sim_insertion_scripted_mirror': {\n        'dataset_dir': DATA_DIR + '/sim_insertion_scripted_mirror',\n        'num_episodes': None,\n        'episode_len': 400,\n        'camera_names': ['top', 'left_wrist', 'right_wrist']\n    },\n}\n### Simulation envs fixed constants\nDT = 0.02\nFPS = 50\nJOINT_NAMES = [\"waist\", \"shoulder\", \"elbow\", \"forearm_roll\", \"wrist_angle\", \"wrist_rotate\"]\nSTART_ARM_POSE = [0, -0.96, 1.16, 0, -0.3, 0, 0.02239, -0.02239,  0, -0.96, 1.16, 0, -0.3, 0, 0.02239, -0.02239]\nXML_DIR = str(pathlib.Path(__file__).parent.resolve()) + '/assets/' # note: absolute path\n# Left finger position limits (qpos[7]), right_finger = -1 * left_finger",
+        "type": "code",
+        "location": "/constants.py:36-66"
+    },
+    "91": {
+        "file_id": 6,
+        "content": "This code defines a dictionary containing constant values for simulation environments. It includes dataset directories, episode parameters, and camera names for each environment. Additionally, there are constants defining the time step (DT), frame rate (FPS), joint names, initial arm pose, and finger position limits for the simulation. These constants will be used in the simulation processes to ensure consistency across different environments and tasks.",
+        "type": "comment"
+    },
+    "92": {
+        "file_id": 6,
+        "content": "MASTER_GRIPPER_POSITION_OPEN = 0.02417\nMASTER_GRIPPER_POSITION_CLOSE = 0.01244\nPUPPET_GRIPPER_POSITION_OPEN = 0.05800\nPUPPET_GRIPPER_POSITION_CLOSE = 0.01844\n# Gripper joint limits (qpos[6])\nMASTER_GRIPPER_JOINT_OPEN = -0.8\nMASTER_GRIPPER_JOINT_CLOSE = -1.65\nPUPPET_GRIPPER_JOINT_OPEN = 1.4910\nPUPPET_GRIPPER_JOINT_CLOSE = -0.6213\n############################ Helper functions ############################\nMASTER_GRIPPER_POSITION_NORMALIZE_FN = lambda x: (x - MASTER_GRIPPER_POSITION_CLOSE) / (MASTER_GRIPPER_POSITION_OPEN - MASTER_GRIPPER_POSITION_CLOSE)\nPUPPET_GRIPPER_POSITION_NORMALIZE_FN = lambda x: (x - PUPPET_GRIPPER_POSITION_CLOSE) / (PUPPET_GRIPPER_POSITION_OPEN - PUPPET_GRIPPER_POSITION_CLOSE)\nMASTER_GRIPPER_POSITION_UNNORMALIZE_FN = lambda x: x * (MASTER_GRIPPER_POSITION_OPEN - MASTER_GRIPPER_POSITION_CLOSE) + MASTER_GRIPPER_POSITION_CLOSE\nPUPPET_GRIPPER_POSITION_UNNORMALIZE_FN = lambda x: x * (PUPPET_GRIPPER_POSITION_OPEN - PUPPET_GRIPPER_POSITION_CLOSE) + PUPPET_GRIPPER_POSITION_CLOSE\nMASTER2P",
+        "type": "code",
+        "location": "/constants.py:67-84"
+    },
+    "93": {
+        "file_id": 6,
+        "content": "This code defines gripper position and joint limits for the master and puppet grippers. It also includes normalization and unnormalization functions to convert gripper positions between normalized and actual values. The purpose is likely to enable consistent handling of gripper positions regardless of their current state.",
+        "type": "comment"
+    },
+    "94": {
+        "file_id": 6,
+        "content": "UPPET_POSITION_FN = lambda x: PUPPET_GRIPPER_POSITION_UNNORMALIZE_FN(MASTER_GRIPPER_POSITION_NORMALIZE_FN(x))\nMASTER_GRIPPER_JOINT_NORMALIZE_FN = lambda x: (x - MASTER_GRIPPER_JOINT_CLOSE) / (MASTER_GRIPPER_JOINT_OPEN - MASTER_GRIPPER_JOINT_CLOSE)\nPUPPET_GRIPPER_JOINT_NORMALIZE_FN = lambda x: (x - PUPPET_GRIPPER_JOINT_CLOSE) / (PUPPET_GRIPPER_JOINT_OPEN - PUPPET_GRIPPER_JOINT_CLOSE)\nMASTER_GRIPPER_JOINT_UNNORMALIZE_FN = lambda x: x * (MASTER_GRIPPER_JOINT_OPEN - MASTER_GRIPPER_JOINT_CLOSE) + MASTER_GRIPPER_JOINT_CLOSE\nPUPPET_GRIPPER_JOINT_UNNORMALIZE_FN = lambda x: x * (PUPPET_GRIPPER_JOINT_OPEN - PUPPET_GRIPPER_JOINT_CLOSE) + PUPPET_GRIPPER_JOINT_CLOSE\nMASTER2PUPPET_JOINT_FN = lambda x: PUPPET_GRIPPER_JOINT_UNNORMALIZE_FN(MASTER_GRIPPER_JOINT_NORMALIZE_FN(x))\nMASTER_GRIPPER_VELOCITY_NORMALIZE_FN = lambda x: x / (MASTER_GRIPPER_POSITION_OPEN - MASTER_GRIPPER_POSITION_CLOSE)\nPUPPET_GRIPPER_VELOCITY_NORMALIZE_FN = lambda x: x / (PUPPET_GRIPPER_POSITION_OPEN - PUPPET_GRIPPER_POSITION_CLOSE)\nMASTE",
+        "type": "code",
+        "location": "/constants.py:84-95"
+    },
+    "95": {
+        "file_id": 6,
+        "content": "This code defines various lambda functions for joint normalization and unnormalization, gripper velocity normalization, as well as a master-to-puppet joint conversion function. These functions are likely used in robotics or similar applications to manipulate and convert gripper positions and velocities between two systems with different open and closed positions.",
+        "type": "comment"
+    },
+    "96": {
+        "file_id": 6,
+        "content": "R_POS2JOINT = lambda x: MASTER_GRIPPER_POSITION_NORMALIZE_FN(x) * (MASTER_GRIPPER_JOINT_OPEN - MASTER_GRIPPER_JOINT_CLOSE) + MASTER_GRIPPER_JOINT_CLOSE\nMASTER_JOINT2POS = lambda x: MASTER_GRIPPER_POSITION_UNNORMALIZE_FN((x - MASTER_GRIPPER_JOINT_CLOSE) / (MASTER_GRIPPER_JOINT_OPEN - MASTER_GRIPPER_JOINT_CLOSE))\nPUPPET_POS2JOINT = lambda x: PUPPET_GRIPPER_POSITION_NORMALIZE_FN(x) * (PUPPET_GRIPPER_JOINT_OPEN - PUPPET_GRIPPER_JOINT_CLOSE) + PUPPET_GRIPPER_JOINT_CLOSE\nPUPPET_JOINT2POS = lambda x: PUPPET_GRIPPER_POSITION_UNNORMALIZE_FN((x - PUPPET_GRIPPER_JOINT_CLOSE) / (PUPPET_GRIPPER_JOINT_OPEN - PUPPET_GRIPPER_JOINT_CLOSE))\nMASTER_GRIPPER_JOINT_MID = (MASTER_GRIPPER_JOINT_OPEN + MASTER_GRIPPER_JOINT_CLOSE)/2",
+        "type": "code",
+        "location": "/constants.py:95-100"
+    },
+    "97": {
+        "file_id": 6,
+        "content": "This code defines four lambda functions, two each for the master and puppet grippers. The functions convert gripper positions to joint angles (pos2joint) and vice versa (joint2pos). It also calculates the midpoint of the master gripper's joint range. These functions use normalize and unnormalize FN from respective constants.",
+        "type": "comment"
+    },
+    "98": {
+        "file_id": 7,
+        "content": "/detr/README.md",
+        "type": "filepath"
+    },
+    "99": {
+        "file_id": 7,
+        "content": "This code snippet is modified from the DETR repository and licensed under Apache 2.0. It cites End-to-End Object Detection with Transformers paper as its reference.",
+        "type": "summary"
+    }
+}
