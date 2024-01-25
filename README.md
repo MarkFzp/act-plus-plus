@@ -33,8 +33,8 @@ You can find all scripted/human demo for simulated environments [here](https://d
     pip install pyyaml
     pip install rospkg
     pip install pexpect
-    pip install mujoco
-    pip install dm_control
+    pip install mujoco==2.3.7
+    pip install dm_control==1.0.14
     pip install opencv-python
     pip install matplotlib
     pip install einops
@@ -42,6 +42,8 @@ You can find all scripted/human demo for simulated environments [here](https://d
     pip install h5py
     pip install ipython
     cd act/detr && pip install -e .
+
+- also need to install https://github.com/ARISE-Initiative/robomimic/tree/r2d2 (note the r2d2 branch) for Diffusion Policy by `pip install -e .`
 
 ### Docker and Remote Development
 These instructions were written for both training and generating synthethic data on a remote box with a display head. In the event there is no head (ex: a GCP VM), follow the installation steps for setting up Chrome Remote Deskop. This will create a `display` which we can use below 
@@ -58,7 +60,7 @@ To set up a new terminal, run:
     conda activate aloha
     cd <path to act repo>
 
-### Simulated experiments
+### Simulated experiments (LEGACY table-top ALOHA environments)
 
 We use ``sim_transfer_cube_scripted`` task in the examples below. Another option is ``sim_insertion_scripted``.
 To generated 50 episodes of scripted data, run:
@@ -66,9 +68,11 @@ To generated 50 episodes of scripted data, run:
     python3 record_sim_episodes.py --task_name sim_transfer_cube_scripted --dataset_dir <data save dir> --num_episodes 50
 
 To can add the flag ``--onscreen_render`` to see real-time rendering.
-To visualize the episode after it is collected, run
+To visualize the simulated episodes after it is collected, run
 
     python3 visualize_episodes.py --dataset_dir <data save dir> --episode_idx 0
+
+Note: to visualize data from the mobile-aloha hardware, use the visualize_episodes.py from https://github.com/MarkFzp/mobile-aloha
 
 To train ACT:
     
