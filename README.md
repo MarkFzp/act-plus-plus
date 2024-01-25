@@ -45,6 +45,14 @@ You can find all scripted/human demo for simulated environments [here](https://d
 
 - also need to install https://github.com/ARISE-Initiative/robomimic/tree/r2d2 (note the r2d2 branch) for Diffusion Policy by `pip install -e .`
 
+### Docker and Remote Development
+These instructions were written for both training and generating synthethic data on a remote box with a display head. In the event there is no head (ex: a GCP VM), follow the installation steps for setting up Chrome Remote Deskop. This will create a `display` which we can use below 
+1. In a terminal from a remote desktop screen, run `echo $DISPLAY` to get a display id (ex: `:20`)
+2. In a terminal started from your local machine, export the display id (ex: `export DISPLAY=:20`).
+3. In the same terminal, run `xhost+` to give containers access to the display for rendering.  
+4. `chmod +x run.sh && ./run.sh` to build a docker image and enter the container
+5. Additional volumes can be added for mapping in `run.sh`
+
 ### Example Usages
 
 To set up a new terminal, run:
