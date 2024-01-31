@@ -7,7 +7,7 @@
         "0": {
             "filepath": "/README.md",
             "entry_id": 0,
-            "language_id": "markdown"
+            "language_id": "plain-text"
         },
         "1": {
             "filepath": "/__init__.py",
@@ -42,7 +42,7 @@
         "7": {
             "filepath": "/detr/README.md",
             "entry_id": 98,
-            "language_id": "plain-text"
+            "language_id": "markdown"
         },
         "8": {
             "filepath": "/detr/main.py",
