@@ -1,0 +1,10 @@
+{
+    "summary": "This code imports DynamixelClient and creates an instance with IDs 1 and 2, connects to the '/dev/ttyDXL_wheels' port in a non-blocking manner. It then prints the current position, velocity, and current information of the connected motors.",
+    "details": [
+        {
+            "comment": "This code imports DynamixelClient and creates an instance with IDs 1 and 2, connects to the '/dev/ttyDXL_wheels' port in a non-blocking manner. It then prints the current position, velocity, and current information of the connected motors.",
+            "location": "\"/media/root/Prima/works/act-plus-plus/docs/src/dxl_test.py\":0-3",
+            "content": "from dynamixel_client import DynamixelClient\nclient = DynamixelClient([1, 2], port='/dev/ttyDXL_wheels', lazy_connect=True)\nprint(client.read_pos_vel_cur())"
+        }
+    ]
+}

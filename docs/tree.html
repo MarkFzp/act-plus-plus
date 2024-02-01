@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="github-markdown.css">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons/font/bootstrap-icons.css" rel="stylesheet">
+    <title>Project structure of: MarkFzp/act-plus-plus</title>
+    <style>
+        .directory:hover {
+            cursor: pointer;
+            text-decoration: underline;
+        }
+
+        :target {
+            background-color: yellow !important;
+        }
+
+        .folded::before {
+            content: '\25B6';
+            margin-right: 8px;
+            /* Add space between marker and text */
+        }
+
+        .expanded::before {
+            content: '\25BC';
+            margin-right: 8px;
+            /* Add space between marker and text */
+        }
+    </style>
+    <script>
+        function toggleVisibility(element) {
+            let mclass = element.getAttribute("class");
+            if (mclass == "expanded") {
+                element.setAttribute('class', 'folded');
+            } else {
+                element.setAttribute('class', 'expanded');
+            }
+            const siblings = element.parentNode.children;
+            for (const sibling of siblings) {
+                if (sibling !== element) {
+                    sibling.style.display = (sibling.style.display === 'none') ? 'block' : 'none';
+                }
+            }
+        }
+    </script>
+    <style>
+        .markdown-body {
+            box-sizing: border-box;
+            min-width: 200px;
+            max-width: 980px;
+            margin: 0 auto;
+            padding: 45px;
+        }
+
+        @media (max-width: 767px) {
+            .markdown-body {
+                padding: 15px;
+            }
+
+            .partial-repository-url {
+                display: none;
+            }
+        }
+
+        ul {
+            list-style: none;
+        }
+        #feeling-lucky:hover{
+            cursor: pointer;
+        }
+    </style>
+</head>
+
+<body>
+    <article class="markdown-body">
+        <h2>Project structure<span hierarchy="0" class="partial-repository-url"> of: MarkFzp/act-plus-plus</span><div style="float: right;"><a title="Document index" style="margin:3.5px;" href="index.html"><i class="bi bi-search"></i></a><a title="Feeling lucky" style="margin:3.5px;" id="feeling-lucky" href="#"><i class="bi bi-dice-3"></i></a><a title="Expand tree" style="margin:3.5px;" href="tree.html?full=true" id="expand-tree"><i class="bi bi-caret-down-square"></i></a></div></h2>
+<ul>
+<li><span hierarchy="0" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/"><code>act-plus-plus</code></strong> <em>Advanced Robotics &amp; AI Tools</em></span><ul>
+<li><a class="file_link" href="index.html?q=/__init__.py" id="/__init__.py"><code>&UnderBar;&UnderBar;init&UnderBar;&UnderBar;&period;py</code></a> <em>Incomplete or empty code snippet</em></li>
+<li><a class="file_link" href="index.html?q=/align.py" id="/align.py"><code>align&period;py</code></a> <em>Calibrates head cam and arms, wakes bots, opens grippers</em></li>
+<li><a class="file_link" href="index.html?q=/commands.txt" id="/commands.txt"><code>commands&period;txt</code></a> <em>Trains RL models, preprocesses data, experiments with hyperparameters.</em></li>
+<li><a class="file_link" href="index.html?q=/compress_data.py" id="/compress_data.py"><code>compress&UnderBar;data&period;py</code></a> <em>Compresses images, videos, and handles HDF5 datasets.</em></li>
+<li><a class="file_link" href="index.html?q=/conda_env.yaml" id="/conda_env.yaml"><code>conda&UnderBar;env&period;yaml</code></a> <em>Conda environment setup: "aloha" with packages.</em></li>
+<li><a class="file_link" href="index.html?q=/constants.py" id="/constants.py"><code>constants&period;py</code></a> <em>Robotics task parameters and environments defined.</em></li>
+<li><span hierarchy="1" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/detr/"><code>detr</code></strong> <em>DETR data utilities and visualization.</em></span><ul>
+<li><a class="file_link" href="index.html?q=/detr/main.py" id="/detr/main.py"><code>main&period;py</code></a> <em>Deep learning transformer detector script.</em></li>
+<li><span hierarchy="2" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/detr/models/"><code>models</code></strong> <em>DETR: Transformer models for images, sequences.</em></span><ul>
+<li><a class="file_link" href="index.html?q=/detr/models/__init__.py" id="/detr/models/__init__.py"><code>&UnderBar;&UnderBar;init&UnderBar;&UnderBar;&period;py</code></a> <em>DETR-VAE and CNN+MLP model build functions in one module.</em></li>
+<li><a class="file_link" href="index.html?q=/detr/models/backbone.py" id="/detr/models/backbone.py"><code>backbone&period;py</code></a> <em>Backbone Class: ResNet, Vision Transformer</em></li>
+<li><a class="file_link" href="index.html?q=/detr/models/detr_vae.py" id="/detr/models/detr_vae.py"><code>detr&UnderBar;vae&period;py</code></a> <em>DETR-VAE: Transformer-based image detection model with CVAE</em></li>
+<li><a class="file_link" href="index.html?q=/detr/models/latent_model.py" id="/detr/models/latent_model.py"><code>latent&UnderBar;model&period;py</code></a> <em>Latent Model Transformer for sequence modeling</em></li>
+<li><a class="file_link" href="index.html?q=/detr/models/position_encoding.py" id="/detr/models/position_encoding.py"><code>position&UnderBar;encoding&period;py</code></a> <em>Sine-cosine positional embedding transformer class.</em></li>
+<li><a class="file_link" href="index.html?q=/detr/models/transformer.py" id="/detr/models/transformer.py"><code>transformer&period;py</code></a> <em>PyTorch Transformer class with encoder, decoder</em></li>
+</ul>
+</li>
+<li><a class="file_link" href="index.html?q=/detr/README.md" id="/detr/README.md"><code>README&period;md</code></a> <em>DETR: End-to-End Object Detection with Transformers</em></li>
+<li><a class="file_link" href="index.html?q=/detr/setup.py" id="/detr/setup.py"><code>setup&period;py</code></a> <em>Setup script for detr package with setuptools.</em></li>
+<li><span hierarchy="2" class="expanded" onclick="toggleVisibility(this)" ><strong class="directory" id="/detr/util/"><code>util</code></strong> <em>Data processing and visualization utilities for DETR.</em></span><ul>
+<li><a class="file_link" href="index.html?q=/detr/util/__init__.py" id="/detr/util/__init__.py"><code>&UnderBar;&UnderBar;init&UnderBar;&UnderBar;&period;py</code></a> <em>Facebook owns the codebase rights.</em></li>
+<li><a class="file_link" href="index.html?q=/detr/util/box_ops.py" id="/detr/util/box_ops.py"><code>box&UnderBar;ops&period;py</code></a> <em>Box operations and GIoU functions.</em></li>
+<li><a class="file_link" href="index.html?q=/detr/util/misc.py" id="/detr/util/misc.py"><code>misc&period;py</code></a> <em>Track, smooth, and log metrics with progress updates.</em></li>
+<li><a class="file_link" href="index.html?q=/detr/util/plot_utils.py" id="/detr/util/plot_utils.py"><code>plot&UnderBar;utils&period;py</code></a> <em>Generate matplotlib plots using training logs and precision-recall curves.</em></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a class="file_link" href="index.html?q=/dxl_test.py" id="/dxl_test.py"><code>dxl&UnderBar;test&period;py</code></a> <em>Python script connects motors, prints info</em></li>
+<li><a class="file_link" href="index.html?q=/dynamixel_client.py" id="/dynamixel_client.py"><code>dynamixel&UnderBar;client&period;py</code></a> <em>Dynamixel motor control with DynamixelSDK and CLI.</em></li>
+<li><a class="file_link" href="index.html?q=/ee_sim_env.py" id="/ee_sim_env.py"><code>ee&UnderBar;sim&UnderBar;env&period;py</code></a> <em>Bi-manual robot environment sim, tasks and rewards.</em></li>
+<li><a class="file_link" href="index.html?q=/imitate_episodes.py" id="/imitate_episodes.py"><code>imitate&UnderBar;episodes&period;py</code></a> <em>Trains robot policy network with RL, VQ-VAE, logs data, saves checkpoints, validates performance.</em></li>
+<li><a class="file_link" href="index.html?q=/policy.py" id="/policy.py"><code>policy&period;py</code></a> <em>Policy network for multi-camera image tasks, RL with normalization and loss.</em></li>
+<li><a class="file_link" href="index.html?q=/postprocess_episodes.py" id="/postprocess_episodes.py"><code>postprocess&UnderBar;episodes&period;py</code></a> <em>Post-process episodes: loads, processes, scales, compresses, and saves data.</em></li>
+<li><a class="file_link" href="index.html?q=/README.md" id="/README.md"><code>README&period;md</code></a> <em>Comprehensive RL implementation and guides.</em></li>
+<li><a class="file_link" href="index.html?q=/record_sim_episodes.py" id="/record_sim_episodes.py"><code>record&UnderBar;sim&UnderBar;episodes&period;py</code></a> <em>Simulates environment, stores data for analysis.</em></li>
+<li><a class="file_link" href="index.html?q=/replay_episodes.py" id="/replay_episodes.py"><code>replay&UnderBar;episodes&period;py</code></a> <em>Replay episodes: Import, organize, save videos.</em></li>
+<li><a class="file_link" href="index.html?q=/scripted_policy.py" id="/scripted_policy.py"><code>scripted&UnderBar;policy&period;py</code></a> <em>BasePolicy class for robotic arm policy with trajectory generation and gripper commands.</em></li>
+<li><a class="file_link" href="index.html?q=/setup.py" id="/setup.py"><code>setup&period;py</code></a> <em>Create Python distribution package with setup script.</em></li>
+<li><a class="file_link" href="index.html?q=/sim_env.py" id="/sim_env.py"><code>sim&UnderBar;env&period;py</code></a> <em>Interactive 3D simulator for cube manipulation tasks.</em></li>
+<li><a class="file_link" href="index.html?q=/train_actuator_network.py" id="/train_actuator_network.py"><code>train&UnderBar;actuator&UnderBar;network&period;py</code></a> <em>Trains actuator network, visualizes predictions.</em></li>
+<li><a class="file_link" href="index.html?q=/train_latent_model.py" id="/train_latent_model.py"><code>train&UnderBar;latent&UnderBar;model&period;py</code></a> <em>Train latent model for robot manipulation using ACT-Plus-Plus and deep reinforcement learning.</em></li>
+<li><a class="file_link" href="index.html?q=/truncate_data.py" id="/truncate_data.py"><code>truncate&UnderBar;data&period;py</code></a> <em>Truncates dataset, creates observation group with limited image data.</em></li>
+<li><a class="file_link" href="index.html?q=/utils.py" id="/utils.py"><code>utils&period;py</code></a> <em>EpisodicDataset: Data Processing, Augmentations, Torch Tensor Compat</em></li>
+<li><a class="file_link" href="index.html?q=/vinn_cache_feature.py" id="/vinn_cache_feature.py"><code>vinn&UnderBar;cache&UnderBar;feature&period;py</code></a> <em>Cache VINN feature extraction.</em></li>
+<li><a class="file_link" href="index.html?q=/vinn_eval.py" id="/vinn_eval.py"><code>vinn&UnderBar;eval&period;py</code></a> <em>Nearest neighbor calculation and rollouts for image classification.</em></li>
+<li><a class="file_link" href="index.html?q=/vinn_select_k.py" id="/vinn_select_k.py"><code>vinn&UnderBar;select&UnderBar;k&period;py</code></a> <em>Optimize k for nearest neighbor losses from datasets.</em></li>
+<li><a class="file_link" href="index.html?q=/visualize_episodes.py" id="/visualize_episodes.py"><code>visualize&UnderBar;episodes&period;py</code></a> <em>Visualize timestamped camera frames in Python.</em></li>
+</ul>
+</li>
+</ul>
+    </article>
+    <script type="text/javascript">
+        function getQueryParams() {
+            var search = window.location.search.substring(1); // Remove leading '?'
+            var queryParams = {};
+            search.split('&').forEach(function (pair) {
+                var parts = pair.split('=');
+                var key = decodeURIComponent(parts[0]);
+                var value = decodeURIComponent(parts[1]);
+                queryParams[key] = value;
+            });
+            return queryParams;
+        }
+
+        const queryParams = getQueryParams(window.location.search);
+        const show_full = queryParams.full == "true";
+        //const is_random = queryParams.random == 'true';
+        function feelingLucky() {
+            var elements = document.getElementsByClassName("file_link");
+            var randomIndex = Math.floor(Math.random() * elements.length);
+            window.location = elements[randomIndex].href;
+        }
+        //if (is_random) {feelingLucky();}
+        document.getElementById("feeling-lucky").onclick = feelingLucky;
+        if (!show_full) {
+            const spans = document.querySelectorAll('span');
+            for (let span of spans) {
+                if (span.getAttribute("hierarchy") == '0') { continue }
+                toggleVisibility(span);
+            }
+        } else {
+            const expand_elem = document.getElementById('expand-tree');
+            expand_elem.setAttribute("href", "tree.html");
+            expand_elem.setAttribute("title", "Undo expand");
+            expand_elem.innerHTML = '<i class="bi bi-caret-up-square"></i>'
+        }
+
+    </script>
+</body>
+
+</html>

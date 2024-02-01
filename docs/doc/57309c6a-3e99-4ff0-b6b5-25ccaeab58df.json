@@ -1,0 +1,10 @@
+{
+    "summary": "This is the copyright statement for the codebase, indicating that Facebook and its affiliates hold the rights to this code.",
+    "details": [
+        {
+            "comment": "This is the copyright statement for the codebase, indicating that Facebook and its affiliates hold the rights to this code.",
+            "location": "\"/media/root/Prima/works/act-plus-plus/docs/src/detr/util/__init__.py\":0-0",
+            "content": "# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved"
+        }
+    ]
+}

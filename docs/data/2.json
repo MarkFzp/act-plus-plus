@@ -1,0 +1,545 @@
+{
+    "200": {
+        "file_id": 14,
+        "content": "        # Implementation of Feedforward model\n        self.linear1 = nn.Linear(d_model, dim_feedforward)\n        self.dropout = nn.Dropout(dropout)\n        self.linear2 = nn.Linear(dim_feedforward, d_model)\n        self.norm1 = nn.LayerNorm(d_model)\n        self.norm2 = nn.LayerNorm(d_model)\n        self.norm3 = nn.LayerNorm(d_model)\n        self.dropout1 = nn.Dropout(dropout)\n        self.dropout2 = nn.Dropout(dropout)\n        self.dropout3 = nn.Dropout(dropout)\n        self.activation = _get_activation_fn(activation)\n        self.normalize_before = normalize_before\n    def with_pos_embed(self, tensor, pos: Optional[Tensor]):\n        return tensor if pos is None else tensor + pos\n    def forward_post(self, tgt, memory,\n                     tgt_mask: Optional[Tensor] = None,\n                     memory_mask: Optional[Tensor] = None,\n                     tgt_key_padding_mask: Optional[Tensor] = None,\n                     memory_key_padding_mask: Optional[Tensor] = None,\n                     pos: Optional[Tensor] = None,",
+        "type": "code",
+        "location": "/detr/models/transformer.py:211-234"
+    },
+    "201": {
+        "file_id": 14,
+        "content": "This code defines a class for the Feedforward model in Transformer architecture. It includes several linear layers, dropout layers, and layer normalization. The forward_post method takes input tensors, masks, and positional embeddings as arguments to perform feed-forward operations.",
+        "type": "comment"
+    },
+    "202": {
+        "file_id": 14,
+        "content": "                     query_pos: Optional[Tensor] = None):\n        q = k = self.with_pos_embed(tgt, query_pos)\n        tgt2 = self.self_attn(q, k, value=tgt, attn_mask=tgt_mask,\n                              key_padding_mask=tgt_key_padding_mask)[0]\n        tgt = tgt + self.dropout1(tgt2)\n        tgt = self.norm1(tgt)\n        tgt2 = self.multihead_attn(query=self.with_pos_embed(tgt, query_pos),\n                                   key=self.with_pos_embed(memory, pos),\n                                   value=memory, attn_mask=memory_mask,\n                                   key_padding_mask=memory_key_padding_mask)[0]\n        tgt = tgt + self.dropout2(tgt2)\n        tgt = self.norm2(tgt)\n        tgt2 = self.linear2(self.dropout(self.activation(self.linear1(tgt))))\n        tgt = tgt + self.dropout3(tgt2)\n        tgt = self.norm3(tgt)\n        return tgt\n    def forward_pre(self, tgt, memory,\n                    tgt_mask: Optional[Tensor] = None,\n                    memory_mask: Optional[Tensor] = None,\n                    tgt_key_padding_mask: Optional[Tensor] = None,",
+        "type": "code",
+        "location": "/detr/models/transformer.py:235-255"
+    },
+    "203": {
+        "file_id": 14,
+        "content": "This function performs multi-head self-attention, applies layer normalization and feed-forward network layers to the target sequence. It takes in the target (tgt) and memory sequences, along with optional masking tensors for attention masks and key padding masks. It returns the processed target sequence.",
+        "type": "comment"
+    },
+    "204": {
+        "file_id": 14,
+        "content": "                    memory_key_padding_mask: Optional[Tensor] = None,\n                    pos: Optional[Tensor] = None,\n                    query_pos: Optional[Tensor] = None):\n        tgt2 = self.norm1(tgt)\n        q = k = self.with_pos_embed(tgt2, query_pos)\n        tgt2 = self.self_attn(q, k, value=tgt2, attn_mask=tgt_mask,\n                              key_padding_mask=tgt_key_padding_mask)[0]\n        tgt = tgt + self.dropout1(tgt2)\n        tgt2 = self.norm2(tgt)\n        tgt2 = self.multihead_attn(query=self.with_pos_embed(tgt2, query_pos),\n                                   key=self.with_pos_embed(memory, pos),\n                                   value=memory, attn_mask=memory_mask,\n                                   key_padding_mask=memory_key_padding_mask)[0]\n        tgt = tgt + self.dropout2(tgt2)\n        tgt2 = self.norm3(tgt)\n        tgt2 = self.linear2(self.dropout(self.activation(self.linear1(tgt2))))\n        tgt = tgt + self.dropout3(tgt2)\n        return tgt\n    def forward(self, tgt, memory,",
+        "type": "code",
+        "location": "/detr/models/transformer.py:256-275"
+    },
+    "205": {
+        "file_id": 14,
+        "content": "This code defines a function for the transformer model in PyTorch. It performs self-attention on the target sequence (tgt) and applies multi-head attention to interact with memory, incorporating positional embeddings and masking for attentive processing. Finally, it passes through a feed-forward network and dropout layers before returning the modified target sequence.",
+        "type": "comment"
+    },
+    "206": {
+        "file_id": 14,
+        "content": "                tgt_mask: Optional[Tensor] = None,\n                memory_mask: Optional[Tensor] = None,\n                tgt_key_padding_mask: Optional[Tensor] = None,\n                memory_key_padding_mask: Optional[Tensor] = None,\n                pos: Optional[Tensor] = None,\n                query_pos: Optional[Tensor] = None):\n        if self.normalize_before:\n            return self.forward_pre(tgt, memory, tgt_mask, memory_mask,\n                                    tgt_key_padding_mask, memory_key_padding_mask, pos, query_pos)\n        return self.forward_post(tgt, memory, tgt_mask, memory_mask,\n                                 tgt_key_padding_mask, memory_key_padding_mask, pos, query_pos)\ndef _get_clones(module, N):\n    return nn.ModuleList([copy.deepcopy(module) for i in range(N)])\ndef build_transformer(args):\n    return Transformer(\n        d_model=args.hidden_dim,\n        dropout=args.dropout,\n        nhead=args.nheads,\n        dim_feedforward=args.dim_feedforward,\n        num_encoder_layers=args.enc_layers,",
+        "type": "code",
+        "location": "/detr/models/transformer.py:276-299"
+    },
+    "207": {
+        "file_id": 14,
+        "content": "The code defines a Transformer model with optional masks and position embeddings, using deepcopy to create N identical modules for parallel processing. The build_transformer function initializes the Transformer model with given argument values.",
+        "type": "comment"
+    },
+    "208": {
+        "file_id": 14,
+        "content": "        num_decoder_layers=args.dec_layers,\n        normalize_before=args.pre_norm,\n        return_intermediate_dec=True,\n    )\ndef _get_activation_fn(activation):\n    \"\"\"Return an activation function given a string\"\"\"\n    if activation == \"relu\":\n        return F.relu\n    if activation == \"gelu\":\n        return F.gelu\n    if activation == \"glu\":\n        return F.glu\n    raise RuntimeError(F\"activation should be relu/gelu, not {activation}.\")",
+        "type": "code",
+        "location": "/detr/models/transformer.py:300-314"
+    },
+    "209": {
+        "file_id": 14,
+        "content": "This code defines a function for creating a transformer model with specified parameters and returns an activation function based on the input string.",
+        "type": "comment"
+    },
+    "210": {
+        "file_id": 15,
+        "content": "/detr/setup.py",
+        "type": "filepath"
+    },
+    "211": {
+        "file_id": 15,
+        "content": "The code imports necessary modules and sets up a setup script for the \"detr\" package using setuptools. It defines the package name, version, licenses, and reads the long description from the README file.",
+        "type": "summary"
+    },
+    "212": {
+        "file_id": 15,
+        "content": "from distutils.core import setup\nfrom setuptools import find_packages\nsetup(\n    name='detr',\n    version='0.0.0',\n    packages=find_packages(),\n    license='MIT License',\n    long_description=open('README.md').read(),\n)",
+        "type": "code",
+        "location": "/detr/setup.py:1-10"
+    },
+    "213": {
+        "file_id": 15,
+        "content": "The code imports necessary modules and sets up a setup script for the \"detr\" package using setuptools. It defines the package name, version, licenses, and reads the long description from the README file.",
+        "type": "comment"
+    },
+    "214": {
+        "file_id": 16,
+        "content": "/detr/util/__init__.py",
+        "type": "filepath"
+    },
+    "215": {
+        "file_id": 16,
+        "content": "This is the copyright statement for the codebase, indicating that Facebook and its affiliates hold the rights to this code.",
+        "type": "summary"
+    },
+    "216": {
+        "file_id": 16,
+        "content": "# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved",
+        "type": "code",
+        "location": "/detr/util/__init__.py:1-1"
+    },
+    "217": {
+        "file_id": 16,
+        "content": "This is the copyright statement for the codebase, indicating that Facebook and its affiliates hold the rights to this code.",
+        "type": "comment"
+    },
+    "218": {
+        "file_id": 17,
+        "content": "/detr/util/box_ops.py",
+        "type": "filepath"
+    },
+    "219": {
+        "file_id": 17,
+        "content": "This code contains functions for bounding box manipulation and GIoU, including coordinate system conversion utilities, IOU calculation, modified torchvision box_iou function, and two functions for computing mask coordinates.",
+        "type": "summary"
+    },
+    "220": {
+        "file_id": 17,
+        "content": "# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved\n\"\"\"\nUtilities for bounding box manipulation and GIoU.\n\"\"\"\nimport torch\nfrom torchvision.ops.boxes import box_area\ndef box_cxcywh_to_xyxy(x):\n    x_c, y_c, w, h = x.unbind(-1)\n    b = [(x_c - 0.5 * w), (y_c - 0.5 * h),\n         (x_c + 0.5 * w), (y_c + 0.5 * h)]\n    return torch.stack(b, dim=-1)\ndef box_xyxy_to_cxcywh(x):\n    x0, y0, x1, y1 = x.unbind(-1)\n    b = [(x0 + x1) / 2, (y0 + y1) / 2,\n         (x1 - x0), (y1 - y0)]\n    return torch.stack(b, dim=-1)\n# modified from torchvision to also return the union\ndef box_iou(boxes1, boxes2):\n    area1 = box_area(boxes1)\n    area2 = box_area(boxes2)\n    lt = torch.max(boxes1[:, None, :2], boxes2[:, :2])  # [N,M,2]\n    rb = torch.min(boxes1[:, None, 2:], boxes2[:, 2:])  # [N,M,2]\n    wh = (rb - lt).clamp(min=0)  # [N,M,2]\n    inter = wh[:, :, 0] * wh[:, :, 1]  # [N,M]\n    union = area1[:, None] + area2 - inter\n    iou = inter / union\n    return iou, union\ndef generalized_box_iou(boxes1, boxes2):\n    \"\"\"",
+        "type": "code",
+        "location": "/detr/util/box_ops.py:1-41"
+    },
+    "221": {
+        "file_id": 17,
+        "content": "This code is from the \"act-plus-plus/detr/util/box_ops.py\" file and contains functions for bounding box manipulation and GIoU (Generalized Intersection over Union). The code includes utilities to convert between (cxcywh) and (xyxy) coordinate systems, and calculate the IOU (Intersection Over Union) and Generalized Box IOU between two sets of boxes. It also includes a modified version of torchvision's box_iou function that returns the union as well.",
+        "type": "comment"
+    },
+    "222": {
+        "file_id": 17,
+        "content": "    Generalized IoU from https://giou.stanford.edu/\n    The boxes should be in [x0, y0, x1, y1] format\n    Returns a [N, M] pairwise matrix, where N = len(boxes1)\n    and M = len(boxes2)\n    \"\"\"\n    # degenerate boxes gives inf / nan results\n    # so do an early check\n    assert (boxes1[:, 2:] >= boxes1[:, :2]).all()\n    assert (boxes2[:, 2:] >= boxes2[:, :2]).all()\n    iou, union = box_iou(boxes1, boxes2)\n    lt = torch.min(boxes1[:, None, :2], boxes2[:, :2])\n    rb = torch.max(boxes1[:, None, 2:], boxes2[:, 2:])\n    wh = (rb - lt).clamp(min=0)  # [N,M,2]\n    area = wh[:, :, 0] * wh[:, :, 1]\n    return iou - (area - union) / area\ndef masks_to_boxes(masks):\n    \"\"\"Compute the bounding boxes around the provided masks\n    The masks should be in format [N, H, W] where N is the number of masks, (H, W) are the spatial dimensions.\n    Returns a [N, 4] tensors, with the boxes in xyxy format\n    \"\"\"\n    if masks.numel() == 0:\n        return torch.zeros((0, 4), device=masks.device)\n    h, w = masks.shape[-2:]\n    y = torch.arange(0, h, dtype=torch.float)",
+        "type": "code",
+        "location": "/detr/util/box_ops.py:42-76"
+    },
+    "223": {
+        "file_id": 17,
+        "content": "The code snippet contains two functions: \"generalized_iou\" and \"masks_to_boxes\". The first function calculates a pairwise matrix of Intersection over Union (IoU) between two sets of bounding boxes, taking into account degenerate cases. It asserts that the boxes are in the correct format and computes the IoU and union area between boxes. The second function takes a set of masks and returns the corresponding bounding boxes in xyxy format. It checks if the mask tensor is empty and then calculates the y-coordinates for the bounding boxes.",
+        "type": "comment"
+    },
+    "224": {
+        "file_id": 17,
+        "content": "    x = torch.arange(0, w, dtype=torch.float)\n    y, x = torch.meshgrid(y, x)\n    x_mask = (masks * x.unsqueeze(0))\n    x_max = x_mask.flatten(1).max(-1)[0]\n    x_min = x_mask.masked_fill(~(masks.bool()), 1e8).flatten(1).min(-1)[0]\n    y_mask = (masks * y.unsqueeze(0))\n    y_max = y_mask.flatten(1).max(-1)[0]\n    y_min = y_mask.masked_fill(~(masks.bool()), 1e8).flatten(1).min(-1)[0]\n    return torch.stack([x_min, y_min, x_max, y_max], 1)",
+        "type": "code",
+        "location": "/detr/util/box_ops.py:77-88"
+    },
+    "225": {
+        "file_id": 17,
+        "content": "Computes the minimum and maximum x,y coordinates within masks using meshgrid and masked fill operations, then stacks them into a tensor.",
+        "type": "comment"
+    },
+    "226": {
+        "file_id": 18,
+        "content": "/detr/util/misc.py",
+        "type": "filepath"
+    },
+    "227": {
+        "file_id": 18,
+        "content": "The \"SmoothedValue\" and MetricLogger classes log metrics, offer smoothing, and track progress updates with memory usage. The PyTorch NestedTensor class supports distributed training, ONNX tracing, image padding, and accuracy functions.",
+        "type": "summary"
+    },
+    "228": {
+        "file_id": 18,
+        "content": "# Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved\n\"\"\"\nMisc functions, including distributed helpers.\nMostly copy-paste from torchvision references.\n\"\"\"\nimport os\nimport subprocess\nimport time\nfrom collections import defaultdict, deque\nimport datetime\nimport pickle\nfrom packaging import version\nfrom typing import Optional, List\nimport torch\nimport torch.distributed as dist\nfrom torch import Tensor\n# needed due to empty tensor bug in pytorch and torchvision 0.5\nimport torchvision\nif version.parse(torchvision.__version__) < version.parse('0.7'):\n    from torchvision.ops import _new_empty_tensor\n    from torchvision.ops.misc import _output_size\nclass SmoothedValue(object):\n    \"\"\"Track a series of values and provide access to smoothed values over a\n    window or the global series average.\n    \"\"\"\n    def __init__(self, window_size=20, fmt=None):\n        if fmt is None:\n            fmt = \"{median:.4f} ({global_avg:.4f})\"\n        self.deque = deque(maxlen=window_size)\n        self.total = 0.0\n        self.count = 0",
+        "type": "code",
+        "location": "/detr/util/misc.py:1-37"
+    },
+    "229": {
+        "file_id": 18,
+        "content": "The code is a Python class called \"SmoothedValue\" that tracks a series of values and provides access to smoothed values over a window or the global average. It uses a deque data structure with maximum length \"window_size\" for efficient storage, and keeps track of the total and count of values. The format string \"fmt\" determines how the smoothed value and global average are displayed.",
+        "type": "comment"
+    },
+    "230": {
+        "file_id": 18,
+        "content": "        self.fmt = fmt\n    def update(self, value, n=1):\n        self.deque.append(value)\n        self.count += n\n        self.total += value * n\n    def synchronize_between_processes(self):\n        \"\"\"\n        Warning: does not synchronize the deque!\n        \"\"\"\n        if not is_dist_avail_and_initialized():\n            return\n        t = torch.tensor([self.count, self.total], dtype=torch.float64, device='cuda')\n        dist.barrier()\n        dist.all_reduce(t)\n        t = t.tolist()\n        self.count = int(t[0])\n        self.total = t[1]\n    @property\n    def median(self):\n        d = torch.tensor(list(self.deque))\n        return d.median().item()\n    @property\n    def avg(self):\n        d = torch.tensor(list(self.deque), dtype=torch.float32)\n        return d.mean().item()\n    @property\n    def global_avg(self):\n        return self.total / self.count\n    @property\n    def max(self):\n        return max(self.deque)\n    @property\n    def value(self):\n        return self.deque[-1]\n    def __str__(self):\n        return self.fmt.format(",
+        "type": "code",
+        "location": "/detr/util/misc.py:38-81"
+    },
+    "231": {
+        "file_id": 18,
+        "content": "The code defines a class that tracks a deque (double-ended queue) and provides various properties such as median, average, maximum value, global average, and current value. It also allows updating the deque with values and synchronizing counts and totals across multiple processes using PyTorch's distributed functions.",
+        "type": "comment"
+    },
+    "232": {
+        "file_id": 18,
+        "content": "            median=self.median,\n            avg=self.avg,\n            global_avg=self.global_avg,\n            max=self.max,\n            value=self.value)\ndef all_gather(data):\n    \"\"\"\n    Run all_gather on arbitrary picklable data (not necessarily tensors)\n    Args:\n        data: any picklable object\n    Returns:\n        list[data]: list of data gathered from each rank\n    \"\"\"\n    world_size = get_world_size()\n    if world_size == 1:\n        return [data]\n    # serialized to a Tensor\n    buffer = pickle.dumps(data)\n    storage = torch.ByteStorage.from_buffer(buffer)\n    tensor = torch.ByteTensor(storage).to(\"cuda\")\n    # obtain Tensor size of each rank\n    local_size = torch.tensor([tensor.numel()], device=\"cuda\")\n    size_list = [torch.tensor([0], device=\"cuda\") for _ in range(world_size)]\n    dist.all_gather(size_list, local_size)\n    size_list = [int(size.item()) for size in size_list]\n    max_size = max(size_list)\n    # receiving Tensor from all ranks\n    # we pad the tensor because torch all_gather does not support",
+        "type": "code",
+        "location": "/detr/util/misc.py:82-114"
+    },
+    "233": {
+        "file_id": 18,
+        "content": "This function runs \"all_gather\" on any picklable data object, not necessarily tensors. It first checks if the world size is 1 and returns data if so. If not, it picks up the data, converts it into a byte tensor, gathers the local size of the tensor from each rank using all_gather, finds the maximum size among them, and finally performs an all_gather on the tensor while padding when necessary.",
+        "type": "comment"
+    },
+    "234": {
+        "file_id": 18,
+        "content": "    # gathering tensors of different shapes\n    tensor_list = []\n    for _ in size_list:\n        tensor_list.append(torch.empty((max_size,), dtype=torch.uint8, device=\"cuda\"))\n    if local_size != max_size:\n        padding = torch.empty(size=(max_size - local_size,), dtype=torch.uint8, device=\"cuda\")\n        tensor = torch.cat((tensor, padding), dim=0)\n    dist.all_gather(tensor_list, tensor)\n    data_list = []\n    for size, tensor in zip(size_list, tensor_list):\n        buffer = tensor.cpu().numpy().tobytes()[:size]\n        data_list.append(pickle.loads(buffer))\n    return data_list\ndef reduce_dict(input_dict, average=True):\n    \"\"\"\n    Args:\n        input_dict (dict): all the values will be reduced\n        average (bool): whether to do average or sum\n    Reduce the values in the dictionary from all processes so that all processes\n    have the averaged results. Returns a dict with the same fields as\n    input_dict, after reduction.\n    \"\"\"\n    world_size = get_world_size()\n    if world_size < 2:\n        return input_dict",
+        "type": "code",
+        "location": "/detr/util/misc.py:115-143"
+    },
+    "235": {
+        "file_id": 18,
+        "content": "This code snippet is responsible for gathering tensors of different shapes and reducing the values in a dictionary from all processes. It first creates empty tensors for various sizes, then gathers them using all-gather operation. Afterwards, it converts tensors to data and appends them to a list. The second function reduces the values in an input dictionary across multiple processes by averaging or summing them, based on the specified flag.",
+        "type": "comment"
+    },
+    "236": {
+        "file_id": 18,
+        "content": "    with torch.no_grad():\n        names = []\n        values = []\n        # sort the keys so that they are consistent across processes\n        for k in sorted(input_dict.keys()):\n            names.append(k)\n            values.append(input_dict[k])\n        values = torch.stack(values, dim=0)\n        dist.all_reduce(values)\n        if average:\n            values /= world_size\n        reduced_dict = {k: v for k, v in zip(names, values)}\n    return reduced_dict\nclass MetricLogger(object):\n    def __init__(self, delimiter=\"\\t\"):\n        self.meters = defaultdict(SmoothedValue)\n        self.delimiter = delimiter\n    def update(self, **kwargs):\n        for k, v in kwargs.items():\n            if isinstance(v, torch.Tensor):\n                v = v.item()\n            assert isinstance(v, (float, int))\n            self.meters[k].update(v)\n    def __getattr__(self, attr):\n        if attr in self.meters:\n            return self.meters[attr]\n        if attr in self.__dict__:\n            return self.__dict__[attr]\n        raise AttributeError(\"'{}' object has no attribute '{}'\".format(",
+        "type": "code",
+        "location": "/detr/util/misc.py:144-176"
+    },
+    "237": {
+        "file_id": 18,
+        "content": "This code snippet defines a class MetricLogger which logs metrics such as average and sum. It also contains a function that averages values across processes, creating a reduced dictionary after performing all-reduce operation. This could be useful for distributed training where different processes need to communicate their results for aggregation and averaging purposes.",
+        "type": "comment"
+    },
+    "238": {
+        "file_id": 18,
+        "content": "            type(self).__name__, attr))\n    def __str__(self):\n        loss_str = []\n        for name, meter in self.meters.items():\n            loss_str.append(\n                \"{}: {}\".format(name, str(meter))\n            )\n        return self.delimiter.join(loss_str)\n    def synchronize_between_processes(self):\n        for meter in self.meters.values():\n            meter.synchronize_between_processes()\n    def add_meter(self, name, meter):\n        self.meters[name] = meter\n    def log_every(self, iterable, print_freq, header=None):\n        i = 0\n        if not header:\n            header = ''\n        start_time = time.time()\n        end = time.time()\n        iter_time = SmoothedValue(fmt='{avg:.4f}')\n        data_time = SmoothedValue(fmt='{avg:.4f}')\n        space_fmt = ':' + str(len(str(len(iterable)))) + 'd'\n        if torch.cuda.is_available():\n            log_msg = self.delimiter.join([\n                header,\n                '[{0' + space_fmt + '}/{1}]',\n                'eta: {eta}',\n                '{meters}',",
+        "type": "code",
+        "location": "/detr/util/misc.py:177-208"
+    },
+    "239": {
+        "file_id": 18,
+        "content": "The code defines a class with methods for logging iterable data every 'print_freq' iterations. It includes synchronization, adding meters, and displaying loss metrics as strings. The class also has a timer to calculate elapsed time for each iteration of the iterable.",
+        "type": "comment"
+    },
+    "240": {
+        "file_id": 18,
+        "content": "                'time: {time}',\n                'data: {data}',\n                'max mem: {memory:.0f}'\n            ])\n        else:\n            log_msg = self.delimiter.join([\n                header,\n                '[{0' + space_fmt + '}/{1}]',\n                'eta: {eta}',\n                '{meters}',\n                'time: {time}',\n                'data: {data}'\n            ])\n        MB = 1024.0 * 1024.0\n        for obj in iterable:\n            data_time.update(time.time() - end)\n            yield obj\n            iter_time.update(time.time() - end)\n            if i % print_freq == 0 or i == len(iterable) - 1:\n                eta_seconds = iter_time.global_avg * (len(iterable) - i)\n                eta_string = str(datetime.timedelta(seconds=int(eta_seconds)))\n                if torch.cuda.is_available():\n                    print(log_msg.format(\n                        i, len(iterable), eta=eta_string,\n                        meters=str(self),\n                        time=str(iter_time), data=str(data_time),",
+        "type": "code",
+        "location": "/detr/util/misc.py:209-234"
+    },
+    "241": {
+        "file_id": 18,
+        "content": "This code snippet is part of a progress bar implementation. It calculates elapsed time, remaining time estimation, and memory usage for an iterable. The log message is constructed with dynamic placeholders and printed at specified intervals based on the print_freq variable. The CUDA availability check ensures proper printing to the console or CUDA device.",
+        "type": "comment"
+    },
+    "242": {
+        "file_id": 18,
+        "content": "                        memory=torch.cuda.max_memory_allocated() / MB))\n                else:\n                    print(log_msg.format(\n                        i, len(iterable), eta=eta_string,\n                        meters=str(self),\n                        time=str(iter_time), data=str(data_time)))\n            i += 1\n            end = time.time()\n        total_time = time.time() - start_time\n        total_time_str = str(datetime.timedelta(seconds=int(total_time)))\n        print('{} Total time: {} ({:.4f} s / it)'.format(\n            header, total_time_str, total_time / len(iterable)))\ndef get_sha():\n    cwd = os.path.dirname(os.path.abspath(__file__))\n    def _run(command):\n        return subprocess.check_output(command, cwd=cwd).decode('ascii').strip()\n    sha = 'N/A'\n    diff = \"clean\"\n    branch = 'N/A'\n    try:\n        sha = _run(['git', 'rev-parse', 'HEAD'])\n        subprocess.check_output(['git', 'diff'], cwd=cwd)\n        diff = _run(['git', 'diff-index', 'HEAD'])\n        diff = \"has uncommited changes\" if diff else \"clean\"",
+        "type": "code",
+        "location": "/detr/util/misc.py:235-261"
+    },
+    "243": {
+        "file_id": 18,
+        "content": "The code defines a function that calculates the total time taken for an iterable and logs progress updates. It also includes functions to get the current branch, uncommitted changes, and SHA of the current file's directory.",
+        "type": "comment"
+    },
+    "244": {
+        "file_id": 18,
+        "content": "        branch = _run(['git', 'rev-parse', '--abbrev-ref', 'HEAD'])\n    except Exception:\n        pass\n    message = f\"sha: {sha}, status: {diff}, branch: {branch}\"\n    return message\ndef collate_fn(batch):\n    batch = list(zip(*batch))\n    batch[0] = nested_tensor_from_tensor_list(batch[0])\n    return tuple(batch)\ndef _max_by_axis(the_list):\n    # type: (List[List[int]]) -> List[int]\n    maxes = the_list[0]\n    for sublist in the_list[1:]:\n        for index, item in enumerate(sublist):\n            maxes[index] = max(maxes[index], item)\n    return maxes\nclass NestedTensor(object):\n    def __init__(self, tensors, mask: Optional[Tensor]):\n        self.tensors = tensors\n        self.mask = mask\n    def to(self, device):\n        # type: (Device) -> NestedTensor # noqa\n        cast_tensor = self.tensors.to(device)\n        mask = self.mask\n        if mask is not None:\n            assert mask is not None\n            cast_mask = mask.to(device)\n        else:\n            cast_mask = None\n        return NestedTensor(cast_tensor, cast_mask)",
+        "type": "code",
+        "location": "/detr/util/misc.py:262-298"
+    },
+    "245": {
+        "file_id": 18,
+        "content": "This code defines a class NestedTensor, functions collate_fn, _max_by_axis, and _run. NestedTensor represents tensors with optional masking for PyTorch. collate_fn organizes input batches of different dimensions into tuples. _max_by_axis finds the maximum value along an axis in a list of lists. _run executes a git command and returns its output. These functions appear to be used in deep learning tasks, potentially for data processing or model training.",
+        "type": "comment"
+    },
+    "246": {
+        "file_id": 18,
+        "content": "    def decompose(self):\n        return self.tensors, self.mask\n    def __repr__(self):\n        return str(self.tensors)\ndef nested_tensor_from_tensor_list(tensor_list: List[Tensor]):\n    # TODO make this more general\n    if tensor_list[0].ndim == 3:\n        if torchvision._is_tracing():\n            # nested_tensor_from_tensor_list() does not export well to ONNX\n            # call _onnx_nested_tensor_from_tensor_list() instead\n            return _onnx_nested_tensor_from_tensor_list(tensor_list)\n        # TODO make it support different-sized images\n        max_size = _max_by_axis([list(img.shape) for img in tensor_list])\n        # min_size = tuple(min(s) for s in zip(*[img.shape for img in tensor_list]))\n        batch_shape = [len(tensor_list)] + max_size\n        b, c, h, w = batch_shape\n        dtype = tensor_list[0].dtype\n        device = tensor_list[0].device\n        tensor = torch.zeros(batch_shape, dtype=dtype, device=device)\n        mask = torch.ones((b, h, w), dtype=torch.bool, device=device)\n        for img, pad_img, m in zip(tensor_list, tensor, mask):",
+        "type": "code",
+        "location": "/detr/util/misc.py:300-324"
+    },
+    "247": {
+        "file_id": 18,
+        "content": "The code defines a `decompose` function that returns tensors and mask, and a `__repr__` function that returns the tensor representation. The main function is `nested_tensor_from_tensor_list`, which takes a list of tensors and creates a nested tensor by resizing them to have the same maximum shape while padding smaller ones. It supports 3D tensors and has TODOs for generalization and supporting different-sized images.",
+        "type": "comment"
+    },
+    "248": {
+        "file_id": 18,
+        "content": "            pad_img[: img.shape[0], : img.shape[1], : img.shape[2]].copy_(img)\n            m[: img.shape[1], :img.shape[2]] = False\n    else:\n        raise ValueError('not supported')\n    return NestedTensor(tensor, mask)\n# _onnx_nested_tensor_from_tensor_list() is an implementation of\n# nested_tensor_from_tensor_list() that is supported by ONNX tracing.\n@torch.jit.unused\ndef _onnx_nested_tensor_from_tensor_list(tensor_list: List[Tensor]) -> NestedTensor:\n    max_size = []\n    for i in range(tensor_list[0].dim()):\n        max_size_i = torch.max(torch.stack([img.shape[i] for img in tensor_list]).to(torch.float32)).to(torch.int64)\n        max_size.append(max_size_i)\n    max_size = tuple(max_size)\n    # work around for\n    # pad_img[: img.shape[0], : img.shape[1], : img.shape[2]].copy_(img)\n    # m[: img.shape[1], :img.shape[2]] = False\n    # which is not yet supported in onnx\n    padded_imgs = []\n    padded_masks = []\n    for img in tensor_list:\n        padding = [(s1 - s2) for s1, s2 in zip(max_size, tuple(img.shape))]",
+        "type": "code",
+        "location": "/detr/util/misc.py:325-349"
+    },
+    "249": {
+        "file_id": 18,
+        "content": "This code is creating a NestedTensor from a list of tensors. It checks if the input tensor_list has the same size and data type, then pads the images to have the maximum size in each dimension, and sets the mask accordingly. If not supported, it raises a ValueError. This implementation is designed to be compatible with ONNX tracing using @torch.jit.unused decorator.",
+        "type": "comment"
+    },
+    "250": {
+        "file_id": 18,
+        "content": "        padded_img = torch.nn.functional.pad(img, (0, padding[2], 0, padding[1], 0, padding[0]))\n        padded_imgs.append(padded_img)\n        m = torch.zeros_like(img[0], dtype=torch.int, device=img.device)\n        padded_mask = torch.nn.functional.pad(m, (0, padding[2], 0, padding[1]), \"constant\", 1)\n        padded_masks.append(padded_mask.to(torch.bool))\n    tensor = torch.stack(padded_imgs)\n    mask = torch.stack(padded_masks)\n    return NestedTensor(tensor, mask=mask)\ndef setup_for_distributed(is_master):\n    \"\"\"\n    This function disables printing when not in master process\n    \"\"\"\n    import builtins as __builtin__\n    builtin_print = __builtin__.print\n    def print(*args, **kwargs):\n        force = kwargs.pop('force', False)\n        if is_master or force:\n            builtin_print(*args, **kwargs)\n    __builtin__.print = print\ndef is_dist_avail_and_initialized():\n    if not dist.is_available():\n        return False\n    if not dist.is_initialized():\n        return False\n    return True\ndef get_world_size():",
+        "type": "code",
+        "location": "/detr/util/misc.py:350-386"
+    },
+    "251": {
+        "file_id": 18,
+        "content": "This code snippet is from the act-plus-plus/detr/util/misc.py file and contains functions to pad images, handle distributed training, and check if distributed training is available and initialized. It also sets up a custom print function for non-master processes in distributed training and returns the world size.",
+        "type": "comment"
+    },
+    "252": {
+        "file_id": 18,
+        "content": "    if not is_dist_avail_and_initialized():\n        return 1\n    return dist.get_world_size()\ndef get_rank():\n    if not is_dist_avail_and_initialized():\n        return 0\n    return dist.get_rank()\ndef is_main_process():\n    return get_rank() == 0\ndef save_on_master(*args, **kwargs):\n    if is_main_process():\n        torch.save(*args, **kwargs)\ndef init_distributed_mode(args):\n    if 'RANK' in os.environ and 'WORLD_SIZE' in os.environ:\n        args.rank = int(os.environ[\"RANK\"])\n        args.world_size = int(os.environ['WORLD_SIZE'])\n        args.gpu = int(os.environ['LOCAL_RANK'])\n    elif 'SLURM_PROCID' in os.environ:\n        args.rank = int(os.environ['SLURM_PROCID'])\n        args.gpu = args.rank % torch.cuda.device_count()\n    else:\n        print('Not using distributed mode')\n        args.distributed = False\n        return\n    args.distributed = True\n    torch.cuda.set_device(args.gpu)\n    args.dist_backend = 'nccl'\n    print('| distributed init (rank {}): {}'.format(\n        args.rank, args.dist_url), flush=True)",
+        "type": "code",
+        "location": "/detr/util/misc.py:387-425"
+    },
+    "253": {
+        "file_id": 18,
+        "content": "This code sets up distributed mode for deep learning tasks. It checks if the distribution environment is available and initialized, then gets world size and rank, defines helper functions like saving on master process only, and initializes distributed mode based on the environment variables. The code assumes the use of either Torch or NCCL backend for distributed training.",
+        "type": "comment"
+    },
+    "254": {
+        "file_id": 18,
+        "content": "    torch.distributed.init_process_group(backend=args.dist_backend, init_method=args.dist_url,\n                                         world_size=args.world_size, rank=args.rank)\n    torch.distributed.barrier()\n    setup_for_distributed(args.rank == 0)\n@torch.no_grad()\ndef accuracy(output, target, topk=(1,)):\n    \"\"\"Computes the precision@k for the specified values of k\"\"\"\n    if target.numel() == 0:\n        return [torch.zeros([], device=output.device)]\n    maxk = max(topk)\n    batch_size = target.size(0)\n    _, pred = output.topk(maxk, 1, True, True)\n    pred = pred.t()\n    correct = pred.eq(target.view(1, -1).expand_as(pred))\n    res = []\n    for k in topk:\n        correct_k = correct[:k].view(-1).float().sum(0)\n        res.append(correct_k.mul_(100.0 / batch_size))\n    return res\ndef interpolate(input, size=None, scale_factor=None, mode=\"nearest\", align_corners=None):\n    # type: (Tensor, Optional[List[int]], Optional[float], str, Optional[bool]) -> Tensor\n    \"\"\"\n    Equivalent to nn.functional.interpolate, but with support for empty batch sizes.",
+        "type": "code",
+        "location": "/detr/util/misc.py:426-454"
+    },
+    "255": {
+        "file_id": 18,
+        "content": "This code initializes a distributed process group and sets up functions for calculating accuracy and interpolating tensors. The distributed process group allows for parallel processing across multiple devices, while the accuracy function computes precision@k for specified values of k, and the interpolate function provides equivalent functionality to nn.functional.interpolate but supports empty batch sizes.",
+        "type": "comment"
+    },
+    "256": {
+        "file_id": 18,
+        "content": "    This will eventually be supported natively by PyTorch, and this\n    class can go away.\n    \"\"\"\n    if version.parse(torchvision.__version__) < version.parse('0.7'):\n        if input.numel() > 0:\n            return torch.nn.functional.interpolate(\n                input, size, scale_factor, mode, align_corners\n            )\n        output_shape = _output_size(2, input, size, scale_factor)\n        output_shape = list(input.shape[:-2]) + list(output_shape)\n        return _new_empty_tensor(input, output_shape)\n    else:\n        return torchvision.ops.misc.interpolate(input, size, scale_factor, mode, align_corners)",
+        "type": "code",
+        "location": "/detr/util/misc.py:455-468"
+    },
+    "257": {
+        "file_id": 18,
+        "content": "This function checks the PyTorch and torchvision versions, and performs interpolation differently based on the version. If the version is below 0.7, it uses torch.nn.functional.interpolate(). Otherwise, it calls torchvision.ops.misc.interpolate(). The code also handles empty input cases by returning a new tensor with the appropriate shape.",
+        "type": "comment"
+    },
+    "258": {
+        "file_id": 19,
+        "content": "/detr/util/plot_utils.py",
+        "type": "filepath"
+    },
+    "259": {
+        "file_id": 19,
+        "content": "The \"plot_logs\" function generates matplotlib plots using training logs, handling missing files and plotting precision-recall curves with interpolated mAP values, setting axes titles and legends.",
+        "type": "summary"
+    },
+    "260": {
+        "file_id": 19,
+        "content": "\"\"\"\nPlotting utilities to visualize training logs.\n\"\"\"\nimport torch\nimport pandas as pd\nimport numpy as np\nimport seaborn as sns\nimport matplotlib.pyplot as plt\nfrom pathlib import Path, PurePath\ndef plot_logs(logs, fields=('class_error', 'loss_bbox_unscaled', 'mAP'), ewm_col=0, log_name='log.txt'):\n    '''\n    Function to plot specific fields from training log(s). Plots both training and test results.\n    :: Inputs - logs = list containing Path objects, each pointing to individual dir with a log file\n              - fields = which results to plot from each log file - plots both training and test for each field.\n              - ewm_col = optional, which column to use as the exponential weighted smoothing of the plots\n              - log_name = optional, name of log file if different than default 'log.txt'.\n    :: Outputs - matplotlib plots of results in fields, color coded for each log file.\n               - solid lines are training results, dashed lines are test results.\n    '''\n    func_name = \"plot_utils.py::plot_logs\"",
+        "type": "code",
+        "location": "/detr/util/plot_utils.py:1-26"
+    },
+    "261": {
+        "file_id": 19,
+        "content": "This code defines a function \"plot_logs\" that takes in training logs, fields to plot (like class_error, loss), and optional parameters like ewm_col and log_name. It then generates matplotlib plots showing the results of each field color-coded for each log file with solid lines representing training results and dashed lines for test results.",
+        "type": "comment"
+    },
+    "262": {
+        "file_id": 19,
+        "content": "    # verify logs is a list of Paths (list[Paths]) or single Pathlib object Path,\n    # convert single Path to list to avoid 'not iterable' error\n    if not isinstance(logs, list):\n        if isinstance(logs, PurePath):\n            logs = [logs]\n            print(f\"{func_name} info: logs param expects a list argument, converted to list[Path].\")\n        else:\n            raise ValueError(f\"{func_name} - invalid argument for logs parameter.\\n \\\n            Expect list[Path] or single Path obj, received {type(logs)}\")\n    # Quality checks - verify valid dir(s), that every item in list is Path object, and that log_name exists in each dir\n    for i, dir in enumerate(logs):\n        if not isinstance(dir, PurePath):\n            raise ValueError(f\"{func_name} - non-Path object in logs argument of {type(dir)}: \\n{dir}\")\n        if not dir.exists():\n            raise ValueError(f\"{func_name} - invalid directory in logs argument:\\n{dir}\")\n        # verify log_name exists\n        fn = Path(dir / log_name)\n        if not fn.exists():",
+        "type": "code",
+        "location": "/detr/util/plot_utils.py:28-47"
+    },
+    "263": {
+        "file_id": 19,
+        "content": "This code checks if the 'logs' argument is a list of Paths or a single Path object. If not, it raises an error. It then iterates over each directory in the logs list and ensures they exist as directories. Finally, it checks if the log_name exists within each directory.",
+        "type": "comment"
+    },
+    "264": {
+        "file_id": 19,
+        "content": "            print(f\"-> missing {log_name}.  Have you gotten to Epoch 1 in training?\")\n            print(f\"--> full path of missing log file: {fn}\")\n            return\n    # load log file(s) and plot\n    dfs = [pd.read_json(Path(p) / log_name, lines=True) for p in logs]\n    fig, axs = plt.subplots(ncols=len(fields), figsize=(16, 5))\n    for df, color in zip(dfs, sns.color_palette(n_colors=len(logs))):\n        for j, field in enumerate(fields):\n            if field == 'mAP':\n                coco_eval = pd.DataFrame(\n                    np.stack(df.test_coco_eval_bbox.dropna().values)[:, 1]\n                ).ewm(com=ewm_col).mean()\n                axs[j].plot(coco_eval, c=color)\n            else:\n                df.interpolate().ewm(com=ewm_col).mean().plot(\n                    y=[f'train_{field}', f'test_{field}'],\n                    ax=axs[j],\n                    color=[color] * 2,\n                    style=['-', '--']\n                )\n    for ax, field in zip(axs, fields):\n        ax.legend([Path(p).name for p in logs])",
+        "type": "code",
+        "location": "/detr/util/plot_utils.py:48-72"
+    },
+    "265": {
+        "file_id": 19,
+        "content": "This code checks for a missing log file and prompts the user to make sure they've reached Epoch 1 in training. It then loads log files, plots data frames for specified fields, and handles missing log files. The plot includes mAP (mean average precision) values using COCO evaluation metrics, and other field values interpolated and smoothed using exponential weighted moving averages.",
+        "type": "comment"
+    },
+    "266": {
+        "file_id": 19,
+        "content": "        ax.set_title(field)\ndef plot_precision_recall(files, naming_scheme='iter'):\n    if naming_scheme == 'exp_id':\n        # name becomes exp_id\n        names = [f.parts[-3] for f in files]\n    elif naming_scheme == 'iter':\n        names = [f.stem for f in files]\n    else:\n        raise ValueError(f'not supported {naming_scheme}')\n    fig, axs = plt.subplots(ncols=2, figsize=(16, 5))\n    for f, color, name in zip(files, sns.color_palette(\"Blues\", n_colors=len(files)), names):\n        data = torch.load(f)\n        # precision is n_iou, n_points, n_cat, n_area, max_det\n        precision = data['precision']\n        recall = data['params'].recThrs\n        scores = data['scores']\n        # take precision for all classes, all areas and 100 detections\n        precision = precision[0, :, :, 0, -1].mean(1)\n        scores = scores[0, :, :, 0, -1].mean(1)\n        prec = precision.mean()\n        rec = data['recall'][0, :, 0, -1].mean()\n        print(f'{naming_scheme} {name}: mAP@50={prec * 100: 05.1f}, ' +\n              f'score={scores.mean():0.3f}, ' +",
+        "type": "code",
+        "location": "/detr/util/plot_utils.py:73-97"
+    },
+    "267": {
+        "file_id": 19,
+        "content": "The code defines a function plot_precision_recall that takes in files, and depending on the naming_scheme, extracts either the exp_id or stem from each file. It then creates a figure with two subplots and for each file, it loads the corresponding data and calculates precision, recall, and mean average precision (mAP) at 50. The results are printed out for each file in the format \"naming_scheme name: mAP@50=precision%, score=score\".",
+        "type": "comment"
+    },
+    "268": {
+        "file_id": 19,
+        "content": "              f'f1={2 * prec * rec / (prec + rec + 1e-8):0.3f}'\n              )\n        axs[0].plot(recall, precision, c=color)\n        axs[1].plot(recall, scores, c=color)\n    axs[0].set_title('Precision / Recall')\n    axs[0].legend(names)\n    axs[1].set_title('Scores / Recall')\n    axs[1].legend(names)\n    return fig, axs",
+        "type": "code",
+        "location": "/detr/util/plot_utils.py:98-107"
+    },
+    "269": {
+        "file_id": 19,
+        "content": "This code plots Precision-Recall curves and scores against Recall, sets titles for the axes, adds legends with given names, and returns the figure and axis objects.",
+        "type": "comment"
+    },
+    "270": {
+        "file_id": 20,
+        "content": "/dxl_test.py",
+        "type": "filepath"
+    },
+    "271": {
+        "file_id": 20,
+        "content": "This code imports DynamixelClient and creates an instance with IDs 1 and 2, connects to the '/dev/ttyDXL_wheels' port in a non-blocking manner. It then prints the current position, velocity, and current information of the connected motors.",
+        "type": "summary"
+    },
+    "272": {
+        "file_id": 20,
+        "content": "from dynamixel_client import DynamixelClient\nclient = DynamixelClient([1, 2], port='/dev/ttyDXL_wheels', lazy_connect=True)\nprint(client.read_pos_vel_cur())",
+        "type": "code",
+        "location": "/dxl_test.py:1-4"
+    },
+    "273": {
+        "file_id": 20,
+        "content": "This code imports DynamixelClient and creates an instance with IDs 1 and 2, connects to the '/dev/ttyDXL_wheels' port in a non-blocking manner. It then prints the current position, velocity, and current information of the connected motors.",
+        "type": "comment"
+    },
+    "274": {
+        "file_id": 21,
+        "content": "/dynamixel_client.py",
+        "type": "filepath"
+    },
+    "275": {
+        "file_id": 21,
+        "content": "The code uses DynamixelSDK for motor communication, offering a class for control and incorporating functions for cleanup, conversion, and initialization. It manages motion control through command-line arguments and handles data from Dynamixel motors in an infinite loop.",
+        "type": "summary"
+    },
+    "276": {
+        "file_id": 21,
+        "content": "\"\"\"Communication using the DynamixelSDK.\"\"\"\n##This is based off of the dynamixel SDK\nimport atexit\nimport logging\nimport time\nfrom typing import Optional, Sequence, Union, Tuple\nimport numpy as np\nPROTOCOL_VERSION = 2.0\n# The following addresses assume XH motors.\nADDR_TORQUE_ENABLE = 64\nADDR_GOAL_POSITION = 116\nADDR_PRESENT_POSITION = 132\nADDR_PRESENT_VELOCITY = 128\nADDR_PRESENT_CURRENT = 126\nADDR_PRESENT_POS_VEL_CUR = 126\n# Data Byte Length\nLEN_PRESENT_POSITION = 4\nLEN_PRESENT_VELOCITY = 4\nLEN_PRESENT_CURRENT = 2\nLEN_PRESENT_POS_VEL_CUR = 10\nLEN_GOAL_POSITION = 4\nDEFAULT_POS_SCALE = 2.0 * np.pi / 4096  # 0.088 degrees\n# See http://emanual.robotis.com/docs/en/dxl/x/xh430-v210/#goal-velocity\nDEFAULT_VEL_SCALE = 0.229 * 2.0 * np.pi / 60.0  # 0.229 rpm\nDEFAULT_CUR_SCALE = 1.34\ndef dynamixel_cleanup_handler():\n    \"\"\"Cleanup function to ensure Dynamixels are disconnected properly.\"\"\"\n    open_clients = list(DynamixelClient.OPEN_CLIENTS)\n    for open_client in open_clients:\n        if open_client.port_handler.is_using:\n            logging.warning('Forcing client to close.')",
+        "type": "code",
+        "location": "/dynamixel_client.py:1-38"
+    },
+    "277": {
+        "file_id": 21,
+        "content": "This code is for communicating with Dynamixel motors using the DynamixelSDK. It defines protocol version, addresses for various motor data, byte lengths, and scale factors for position, velocity, and current. The dynamixel_cleanup_handler function ensures Dynamixels are disconnected properly before exiting.",
+        "type": "comment"
+    },
+    "278": {
+        "file_id": 21,
+        "content": "        open_client.port_handler.is_using = False\n        open_client.disconnect()\ndef signed_to_unsigned(value: int, size: int) -> int:\n    \"\"\"Converts the given value to its unsigned representation.\"\"\"\n    if value < 0:\n        bit_size = 8 * size\n        max_value = (1 << bit_size) - 1\n        value = max_value + value\n    return value\ndef unsigned_to_signed(value: int, size: int) -> int:\n    \"\"\"Converts the given value from its unsigned representation.\"\"\"\n    bit_size = 8 * size\n    if (value & (1 << (bit_size - 1))) != 0:\n        value = -((1 << bit_size) - value)\n    return value\nclass DynamixelClient:\n    \"\"\"Client for communicating with Dynamixel motors.\n    NOTE: This only supports Protocol 2.\n    \"\"\"\n    # The currently open clients.\n    OPEN_CLIENTS = set()\n    def __init__(self,\n                 motor_ids: Sequence[int],\n                 port: str = '/dev/ttyUSB0',\n                 baudrate: int = 1000000,\n                 lazy_connect: bool = False,\n                 pos_scale: Optional[float] = None,",
+        "type": "code",
+        "location": "/dynamixel_client.py:39-74"
+    },
+    "279": {
+        "file_id": 21,
+        "content": "The code defines a class `DynamixelClient` for communicating with Dynamixel motors, supporting Protocol 2. It also contains functions `signed_to_unsigned` and `unsigned_to_signed` for converting signed to unsigned values and vice versa. The client can be initialized with motor IDs, port, baudrate, lazy connect option, and optional position scale.",
+        "type": "comment"
+    },
+    "280": {
+        "file_id": 21,
+        "content": "                 vel_scale: Optional[float] = None,\n                 cur_scale: Optional[float] = None):\n        \"\"\"Initializes a new client.\n        Args:\n            motor_ids: All motor IDs being used by the client.\n            port: The Dynamixel device to talk to. e.g.\n                - Linux: /dev/ttyUSB0\n                - Mac: /dev/tty.usbserial-*\n                - Windows: COM1\n            baudrate: The Dynamixel baudrate to communicate with.\n            lazy_connect: If True, automatically connects when calling a method\n                that requires a connection, if not already connected.\n            pos_scale: The scaling factor for the positions. This is\n                motor-dependent. If not provided, uses the default scale.\n            vel_scale: The scaling factor for the velocities. This is\n                motor-dependent. If not provided uses the default scale.\n            cur_scale: The scaling factor for the currents. This is\n                motor-dependent. If not provided uses the default scale.",
+        "type": "code",
+        "location": "/dynamixel_client.py:75-93"
+    },
+    "281": {
+        "file_id": 21,
+        "content": "This code snippet is the constructor of a class, initializing a new Dynamixel client. It takes motor IDs, device port, baudrate, and optional scaling factors for positions, velocities, and currents as arguments. If not provided, it uses default scales. Lazy connectivity is also available if a method requires a connection when not already connected.",
+        "type": "comment"
+    },
+    "282": {
+        "file_id": 21,
+        "content": "        \"\"\"\n        import dynamixel_sdk\n        self.dxl = dynamixel_sdk\n        self.motor_ids = list(motor_ids)\n        self.port_name = port\n        self.baudrate = baudrate\n        self.lazy_connect = lazy_connect\n        self.port_handler = self.dxl.PortHandler(port)\n        self.packet_handler = self.dxl.PacketHandler(PROTOCOL_VERSION)\n        self._pos_vel_cur_reader = DynamixelPosVelCurReader(\n            self,\n            self.motor_ids,\n            pos_scale=pos_scale if pos_scale is not None else DEFAULT_POS_SCALE,\n            vel_scale=vel_scale if vel_scale is not None else DEFAULT_VEL_SCALE,\n            cur_scale=cur_scale if cur_scale is not None else DEFAULT_CUR_SCALE,\n        )\n        self._pos_reader = DynamixelPosReader(\n            self,\n            self.motor_ids,\n            pos_scale=pos_scale if pos_scale is not None else DEFAULT_POS_SCALE,\n            vel_scale=vel_scale if vel_scale is not None else DEFAULT_VEL_SCALE,\n            cur_scale=cur_scale if cur_scale is not None else DEFAULT_CUR_SCALE,",
+        "type": "code",
+        "location": "/dynamixel_client.py:94-118"
+    },
+    "283": {
+        "file_id": 21,
+        "content": "This code imports the dynamixel_sdk library and initializes variables for port, baudrate, lazy connect, and protocol version. It also creates handlers for the port and packet communication and instantiates two reader classes for position, velocity, and current data. These readers can be used to access information from Dynamixel motors.",
+        "type": "comment"
+    },
+    "284": {
+        "file_id": 21,
+        "content": "        )\n        self._vel_reader = DynamixelVelReader(\n            self,\n            self.motor_ids,\n            pos_scale=pos_scale if pos_scale is not None else DEFAULT_POS_SCALE,\n            vel_scale=vel_scale if vel_scale is not None else DEFAULT_VEL_SCALE,\n            cur_scale=cur_scale if cur_scale is not None else DEFAULT_CUR_SCALE,\n        )\n        self._cur_reader = DynamixelCurReader(\n            self,\n            self.motor_ids,\n            pos_scale=pos_scale if pos_scale is not None else DEFAULT_POS_SCALE,\n            vel_scale=vel_scale if vel_scale is not None else DEFAULT_VEL_SCALE,\n            cur_scale=cur_scale if cur_scale is not None else DEFAULT_CUR_SCALE,\n        )\n        self._sync_writers = {}\n        self.OPEN_CLIENTS.add(self)\n    @property\n    def is_connected(self) -> bool:\n        return self.port_handler.is_open\n    def connect(self):\n        \"\"\"Connects to the Dynamixel motors.\n        NOTE: This should be called after all DynamixelClients on the same\n            process are created.",
+        "type": "code",
+        "location": "/dynamixel_client.py:119-146"
+    },
+    "285": {
+        "file_id": 21,
+        "content": "The code initializes reader and writer objects for the Dynamixel motors, handles open clients, and provides a connect method. The `_vel_reader` and `_cur_reader` objects are created with optional scales for position (pos_scale), velocity (vel_scale), and current (cur_scale). These scales allow custom adjustment to the motor data readings. The `self._sync_writers` dictionary is initialized, likely used for synchronous writer operations. The code also includes an `is_connected` property that returns the status of the connection to the Dynamixel motors and a `connect` method which should be called after all DynamixelClients on the same process are created.",
+        "type": "comment"
+    },
+    "286": {
+        "file_id": 21,
+        "content": "        \"\"\"\n        assert not self.is_connected, 'Client is already connected.'\n        if self.port_handler.openPort():\n            logging.info('Succeeded to open port: %s', self.port_name)\n        else:\n            raise OSError(\n                ('Failed to open port at {} (Check that the device is powered '\n                 'on and connected to your computer).').format(self.port_name))\n        if self.port_handler.setBaudRate(self.baudrate):\n            logging.info('Succeeded to set baudrate to %d', self.baudrate)\n        else:\n            raise OSError(\n                ('Failed to set the baudrate to {} (Ensure that the device was '\n                 'configured for this baudrate).').format(self.baudrate))\n        # Start with all motors enabled.  NO, I want to set settings before enabled\n        #self.set_torque_enabled(self.motor_ids, True)\n    def disconnect(self):\n        \"\"\"Disconnects from the Dynamixel device.\"\"\"\n        if not self.is_connected:\n            return\n        if self.port_handler.is_using:",
+        "type": "code",
+        "location": "/dynamixel_client.py:147-171"
+    },
+    "287": {
+        "file_id": 21,
+        "content": "This code checks if the client is already connected and then attempts to open the port. If successful, it logs a message indicating the port has been opened. It also sets the baud rate and logs a success message if that's successful too. The code then enables all motors with True values for settings before enabling. Lastly, there is a function disconnect() which checks if the client is connected, and if so, it disconnects from the Dynamixel device.",
+        "type": "comment"
+    },
+    "288": {
+        "file_id": 21,
+        "content": "            logging.error('Port handler in use; cannot disconnect.')\n            return\n        # Ensure motors are disabled at the end.\n        self.set_torque_enabled(self.motor_ids, False, retries=0)\n        self.port_handler.closePort()\n        if self in self.OPEN_CLIENTS:\n            self.OPEN_CLIENTS.remove(self)\n    def set_torque_enabled(self,\n                           motor_ids: Sequence[int],\n                           enabled: bool,\n                           retries: int = -1,\n                           retry_interval: float = 0.25):\n        \"\"\"Sets whether torque is enabled for the motors.\n        Args:\n            motor_ids: The motor IDs to configure.\n            enabled: Whether to engage or disengage the motors.\n            retries: The number of times to retry. If this is <0, will retry\n                forever.\n            retry_interval: The number of seconds to wait between retries.\n        \"\"\"\n        remaining_ids = list(motor_ids)\n        while remaining_ids:\n            remaining_ids = self.write_byte(",
+        "type": "code",
+        "location": "/dynamixel_client.py:172-196"
+    },
+    "289": {
+        "file_id": 21,
+        "content": "The code is disconnecting the port handler and ensuring motors are disabled. It removes the client from OPEN_CLIENTS, sets motor torque enabled or disabled, retries if necessary, and waits between retries for a specific duration.",
+        "type": "comment"
+    },
+    "290": {
+        "file_id": 21,
+        "content": "                remaining_ids,\n                int(enabled),\n                ADDR_TORQUE_ENABLE,\n            )\n            if remaining_ids:\n                logging.error('Could not set torque %s for IDs: %s',\n                              'enabled' if enabled else 'disabled',\n                              str(remaining_ids))\n            if retries == 0:\n                break\n            time.sleep(retry_interval)\n            retries -= 1\n    def read_pos_vel_cur(self) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:\n        \"\"\"Returns the current positions and velocities.\"\"\"\n        return self._pos_vel_cur_reader.read()\n    def read_pos(self) -> np.ndarray:\n        \"\"\"Returns the current positions and velocities.\"\"\"\n        return self._pos_reader.read()\n    def read_vel(self) -> np.ndarray:\n        \"\"\"Returns the current positions and velocities.\"\"\"\n        return self._vel_reader.read()\n    def read_cur(self) -> np.ndarray:\n        \"\"\"Returns the current positions and velocities.\"\"\"\n        return self._cur_reader.read()",
+        "type": "code",
+        "location": "/dynamixel_client.py:197-221"
+    },
+    "291": {
+        "file_id": 21,
+        "content": "The code defines a function to set the torque of Dynamixel motors. It iterates over each ID and enables/disables the torque for them. If there are remaining unsuccessful IDs, it logs an error message. The code also includes methods to read positions, velocities, and currents from the motors. Each method uses a reader object to retrieve the data.",
+        "type": "comment"
+    },
+    "292": {
+        "file_id": 21,
+        "content": "    def write_desired_pos(self, motor_ids: Sequence[int],\n                          positions: np.ndarray):\n        \"\"\"Writes the given desired positions.\n        Args:\n            motor_ids: The motor IDs to write to.\n            positions: The joint angles in radians to write.\n        \"\"\"\n        assert len(motor_ids) == len(positions)\n        # Convert to Dynamixel position space.\n        positions = positions / self._pos_vel_cur_reader.pos_scale\n        self.sync_write(motor_ids, positions, ADDR_GOAL_POSITION,\n                        LEN_GOAL_POSITION)\n    def write_byte(\n            self,\n            motor_ids: Sequence[int],\n            value: int,\n            address: int,\n    ) -> Sequence[int]:\n        \"\"\"Writes a value to the motors.\n        Args:\n            motor_ids: The motor IDs to write to.\n            value: The value to write to the control table.\n            address: The control table address to write to.\n        Returns:\n            A list of IDs that were unsuccessful.\n        \"\"\"\n        self.check_connected()",
+        "type": "code",
+        "location": "/dynamixel_client.py:223-254"
+    },
+    "293": {
+        "file_id": 21,
+        "content": "This code defines two functions, \"write_desired_pos\" and \"write_byte\". The first function writes the given desired positions to the specified motor IDs. It takes in a list of motor IDs and an array of joint angles, converts the angles to Dynamixel position space, then uses sync_write to write the positions to the motors' goal position address. The second function writes a value to the control table at a given address for specified motor IDs. It returns a list of unsuccessful IDs if any occur during writing.",
+        "type": "comment"
+    },
+    "294": {
+        "file_id": 21,
+        "content": "        errored_ids = []\n        for motor_id in motor_ids:\n            comm_result, dxl_error = self.packet_handler.write1ByteTxRx(\n                self.port_handler, motor_id, address, value)\n            success = self.handle_packet_result(\n                comm_result, dxl_error, motor_id, context='write_byte')\n            if not success:\n                errored_ids.append(motor_id)\n        return errored_ids\n    def sync_write(self, motor_ids: Sequence[int],\n                   values: Sequence[Union[int, float]], address: int,\n                   size: int):\n        \"\"\"Writes values to a group of motors.\n        Args:\n            motor_ids: The motor IDs to write to.\n            values: The values to write.\n            address: The control table address to write to.\n            size: The size of the control table value being written to.\n        \"\"\"\n        self.check_connected()\n        key = (address, size)\n        if key not in self._sync_writers:\n            self._sync_writers[key] = self.dxl.GroupSyncWrite(",
+        "type": "code",
+        "location": "/dynamixel_client.py:255-279"
+    },
+    "295": {
+        "file_id": 21,
+        "content": "This code defines a function `sync_write` that takes motor IDs, values, address, and size as input to write the same value at the specified address for multiple motors. It first checks if the connection is established and then creates a key based on the address and size. If this key is not present in the internal dictionary `self._sync_writers`, it initializes a GroupSyncWrite operation with the given parameters. This function also returns an empty list of motor IDs that had errors during the write operation, which are stored in the variable `errored_ids` by checking if each write operation was successful or not.",
+        "type": "comment"
+    },
+    "296": {
+        "file_id": 21,
+        "content": "                self.port_handler, self.packet_handler, address, size)\n        sync_writer = self._sync_writers[key]\n        errored_ids = []\n        for motor_id, desired_pos in zip(motor_ids, values):\n            value = signed_to_unsigned(int(desired_pos), size=size)\n            value = value.to_bytes(size, byteorder='little')\n            success = sync_writer.addParam(motor_id, value)\n            if not success:\n                errored_ids.append(motor_id)\n        if errored_ids:\n            logging.error('Sync write failed for: %s', str(errored_ids))\n        comm_result = sync_writer.txPacket()\n        self.handle_packet_result(comm_result, context='sync_write')\n        sync_writer.clearParam()\n    def check_connected(self):\n        \"\"\"Ensures the robot is connected.\"\"\"\n        if self.lazy_connect and not self.is_connected:\n            self.connect()\n        if not self.is_connected:\n            raise OSError('Must call connect() first.')\n    def handle_packet_result(self,\n                             comm_result: int,",
+        "type": "code",
+        "location": "/dynamixel_client.py:280-307"
+    },
+    "297": {
+        "file_id": 21,
+        "content": "The code snippet handles synchronous writes to multiple motors. It iterates over motor IDs and desired positions, converts them to the required format, adds them to the packet writer, logs any failures, sends the packet, clears the packet writer, and checks if the robot is connected.",
+        "type": "comment"
+    },
+    "298": {
+        "file_id": 21,
+        "content": "                             dxl_error: Optional[int] = None,\n                             dxl_id: Optional[int] = None,\n                             context: Optional[str] = None):\n        \"\"\"Handles the result from a communication request.\"\"\"\n        error_message = None\n        if comm_result != self.dxl.COMM_SUCCESS:\n            error_message = self.packet_handler.getTxRxResult(comm_result)\n        elif dxl_error is not None:\n            error_message = self.packet_handler.getRxPacketError(dxl_error)\n        if error_message:\n            if dxl_id is not None:\n                error_message = '[Motor ID: {}] {}'.format(\n                    dxl_id, error_message)\n            if context is not None:\n                error_message = '> {}: {}'.format(context, error_message)\n            logging.error(error_message)\n            return False\n        return True\n    def convert_to_unsigned(self, value: int, size: int) -> int:\n        \"\"\"Converts the given value to its unsigned representation.\"\"\"\n        if value < 0:",
+        "type": "code",
+        "location": "/dynamixel_client.py:308-329"
+    },
+    "299": {
+        "file_id": 21,
+        "content": "This function handles communication results and checks for errors. It formats the error message with motor ID and context if provided, then logs the error and returns False. The convert_to_unsigned function converts a given value to its unsigned representation.",
+        "type": "comment"
+    }
+}

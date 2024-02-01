@@ -1,0 +1,15 @@
+{
+    "summary": "The code imports libraries and defines a main function to replay an episode from an existing dataset, organizing images into videos. The 'save_videos' function is defined for command line arguments and executed if the script is run directly.",
+    "details": [
+        {
+            "comment": "The code imports necessary libraries and defines a main function to replay an episode from an existing dataset. It checks if the dataset file exists, then reads the actions and initializes the simulation environment. It performs the steps of the replayed episode by taking actions in the environment, appending states to the episode_replay list. The code then organizes images from each state into a dictionary for saving. Finally, it creates a video path with the modified name and saves the images as videos in that new path.",
+            "location": "\"/media/root/Prima/works/act-plus-plus/docs/src/replay_episodes.py\":0-40",
+            "content": "import os\nimport h5py\nimport argparse\nfrom collections import defaultdict \nfrom sim_env import make_sim_env\nfrom utils import sample_box_pose, sample_insertion_pose\nfrom sim_env import BOX_POSE\nfrom constants import DT\nfrom visualize_episodes import save_videos\nimport IPython\ne = IPython.embed\ndef main(args):\n    dataset_path = args['dataset_path']\n    if not os.path.isfile(dataset_path):\n        print(f'Dataset does not exist at \\n{dataset_path}\\n')\n        exit()\n    with h5py.File(dataset_path, 'r') as root:\n        actions = root['/action'][()]\n    env = make_sim_env('sim_transfer_cube')\n    BOX_POSE[0] = sample_box_pose() # used in sim reset\n    ts = env.reset()\n    episode_replay = [ts]\n    for action in actions:\n        ts = env.step(action)\n        episode_replay.append(ts)\n    # saving\n    image_dict = defaultdict(lambda: [])\n    while episode_replay:\n        ts = episode_replay.pop(0)\n        for cam_name, image in ts.observation['images'].items():\n            image_dict[cam_name].append(image)\n    video_path = dataset_path.replace('episode_', 'replay_episode_').replace('hdf5', 'mp4')"
+        },
+        {
+            "comment": "The code defines a function \"save_videos\" and checks if the script is run directly. It sets up an ArgumentParser for command line arguments, including '--dataset_path'. Then it calls main with the parsed command line arguments.",
+            "location": "\"/media/root/Prima/works/act-plus-plus/docs/src/replay_episodes.py\":41-47",
+            "content": "    save_videos(image_dict, DT, video_path=video_path)\nif __name__ == '__main__':\n    parser = argparse.ArgumentParser()\n    parser.add_argument('--dataset_path', action='store', type=str, help='Dataset path.', required=True)\n    main(vars(parser.parse_args()))"
+        }
+    ]
+}

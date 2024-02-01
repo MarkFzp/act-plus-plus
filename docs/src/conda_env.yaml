@@ -1,0 +1,23 @@
+name: aloha
+channels:
+  - pytorch
+  - nvidia
+  - conda-forge
+dependencies:
+  - python=3.9
+  - pip=23.0.1
+  - pytorch=2.0.0
+  - torchvision=0.15.0
+  - pytorch-cuda=11.8
+  - pyquaternion=0.9.9
+  - pyyaml=6.0
+  - rospkg=1.5.0
+  - pexpect=4.8.0
+  - mujoco=2.3.3
+  - dm_control=1.0.9
+  - py-opencv=4.7.0
+  - matplotlib=3.7.1
+  - einops=0.6.0
+  - packaging=23.0
+  - h5py=3.8.0
+  - ipython=8.12.0
